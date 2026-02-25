@@ -1,0 +1,14 @@
+{
+  "name": "briefcast",
+  "version": "1.0.0",
+  "private": true,
+  "description": "BriefCast pre-flight weather briefings in plain English",
+  "scripts": {
+    "dev": "vercel dev",
+    "start": "vercel dev"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT"
+}

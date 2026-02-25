@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="BriefCast">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f6f3ea"/>
+      <stop offset="100%" stop-color="#d9e8e1"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect x="70" y="70" width="1060" height="490" rx="24" fill="#ffffff" stroke="#d3d3d3"/>
+  <text x="130" y="240" fill="#0f172a" font-family="Georgia, serif" font-size="82" font-weight="700">BriefCast</text>
+  <text x="130" y="320" fill="#334155" font-family="-apple-system, Segoe UI, sans-serif" font-size="36">Pre-Flight Weather Briefings in Plain English</text>
+  <text x="130" y="390" fill="#475569" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24">METAR • TAF • AFD • PIREPs • Hazards</text>
+</svg>

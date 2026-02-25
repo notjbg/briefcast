@@ -1,0 +1,8 @@
+# BriefCast
+
+- Name: BriefCast
+- URL: https://briefcast.live
+- Description: Pre-flight weather briefings translated from aviation jargon to plain English.
+- Disclaimer: Not for operational flight planning. Always verify with official sources.
+- Creator: Jonah Berg
+- Related: https://theblueboard.co, https://plaincast.live

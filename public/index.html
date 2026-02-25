@@ -1,0 +1,1072 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BriefCast — Pre-Flight Weather Briefings in Plain English</title>
+  <meta name="description" content="Get pre-flight weather briefings translated from aviation jargon to plain English. METARs, TAFs, AFDs, PIREPs, and hazards decoded for pilots." />
+  <meta property="og:title" content="BriefCast — Pre-Flight Weather Briefings in Plain English" />
+  <meta property="og:description" content="Plain-English weather briefings for pilots with METARs, TAFs, AFDs, PIREPs, and hazards in one place." />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="/og-image.svg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="BriefCast — Pre-Flight Weather Briefings in Plain English" />
+  <meta name="twitter:description" content="Pre-flight weather briefings translated from aviation jargon to readable prose." />
+  <meta name="twitter:image" content="/og-image.svg" />
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f7f6f3;
+      --card: #ffffff;
+      --ink: #171717;
+      --muted: #4d4d4d;
+      --line: #d9d4cb;
+      --accent: #064e3b;
+      --accent-soft: #e8f3ef;
+      --danger: #8b1d24;
+      --vfr: #0f7a36;
+      --mvfr: #0c4da2;
+      --ifr: #b91c1c;
+      --lifr: #a21caf;
+      --shadow: 0 10px 30px rgba(18, 24, 40, 0.08);
+      --radius: 14px;
+    }
+
+    [data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #111316;
+      --card: #1a1e24;
+      --ink: #f2f4f8;
+      --muted: #b4bdc8;
+      --line: #343b45;
+      --accent: #34d399;
+      --accent-soft: #0f2720;
+      --danger: #fca5a5;
+      --shadow: 0 12px 26px rgba(0, 0, 0, 0.28);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Georgia, Cambria, "Times New Roman", Times, serif;
+      color: var(--ink);
+      background:
+        radial-gradient(1200px 700px at 110% -10%, #d8e8e1 0%, rgba(216, 232, 225, 0) 60%),
+        radial-gradient(1000px 600px at -20% -10%, #e9e3d7 0%, rgba(233, 227, 215, 0) 55%),
+        var(--bg);
+      line-height: 1.45;
+    }
+
+    .container {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 24px 18px 40px;
+    }
+
+    .sans, button, input, select, .badge, .section-kicker, .footer-links, .meta {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    }
+
+    .mono, pre, code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+
+    header {
+      display: grid;
+      gap: 14px;
+      margin-bottom: 22px;
+    }
+
+    .brand-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .brand {
+      font-size: clamp(1.7rem, 3vw, 2.4rem);
+      margin: 0;
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      max-width: 75ch;
+    }
+
+    .btn {
+      border: 1px solid var(--line);
+      background: var(--card);
+      color: var(--ink);
+      border-radius: 12px;
+      padding: 10px 14px;
+      cursor: pointer;
+      transition: all 0.16s ease;
+      font-weight: 600;
+    }
+
+    .btn:hover,
+    .btn:focus-visible {
+      transform: translateY(-1px);
+      box-shadow: var(--shadow);
+      border-color: #b0b0b0;
+    }
+
+    .btn:focus-visible,
+    input:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      border-color: transparent;
+    }
+
+    .btn-primary:hover,
+    .btn-primary:focus-visible {
+      filter: brightness(1.03);
+      border-color: transparent;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 16px;
+      margin-bottom: 14px;
+      animation: fadeIn 250ms ease both;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .inputs {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: 1fr auto 1fr auto;
+      align-items: end;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      font-weight: 600;
+    }
+
+    input[type="text"],
+    input[type="email"],
+    input[type="datetime-local"] {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--card);
+      color: var(--ink);
+      padding: 10px 12px;
+      font-size: 0.98rem;
+      width: 100%;
+    }
+
+    .input-hint {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin: 4px 0 0;
+    }
+
+    .meta {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    .results {
+      display: grid;
+      gap: 14px;
+      margin-top: 18px;
+    }
+
+    .section-kicker {
+      margin: 0 0 8px;
+      font-size: 0.74rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    h2 {
+      margin: 0 0 10px;
+      font-size: 1.15rem;
+      letter-spacing: -0.01em;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      color: #fff;
+    }
+
+    .badge.vfr { background: var(--vfr); }
+    .badge.mvfr { background: var(--mvfr); }
+    .badge.ifr { background: var(--ifr); }
+    .badge.lifr { background: var(--lifr); }
+
+    pre {
+      margin: 0;
+      border: 1px solid var(--line);
+      background: rgba(0, 0, 0, 0.04);
+      border-radius: 10px;
+      padding: 10px;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      font-size: 0.86rem;
+      line-height: 1.35;
+    }
+
+    [data-theme="dark"] pre {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .status {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      margin: 8px 0 0;
+      min-height: 1.3rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .error {
+      color: var(--danger);
+      font-weight: 600;
+    }
+
+    .term {
+      border-bottom: 1px dotted currentColor;
+      cursor: help;
+    }
+
+    .pro {
+      border: 1px solid #e0b861;
+      background: linear-gradient(145deg, #fff9eb, #fff3d5);
+    }
+
+    [data-theme="dark"] .pro {
+      border-color: #8c6f2e;
+      background: linear-gradient(145deg, #2e2617, #1f1911);
+    }
+
+    .pro ul {
+      margin-top: 8px;
+      padding-left: 18px;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+      font-size: 0.94rem;
+    }
+
+    a { color: var(--accent); }
+
+    .print-note {
+      border-left: 4px solid var(--accent);
+      padding-left: 10px;
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin: 10px 0 0;
+    }
+
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      border: 0;
+    }
+
+    @media (max-width: 920px) {
+      .inputs {
+        grid-template-columns: 1fr;
+      }
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media print {
+      body { background: #fff; }
+      .no-print { display: none !important; }
+      .card { box-shadow: none; break-inside: avoid; }
+      a { color: #000; text-decoration: none; }
+    }
+  </style>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "BriefCast",
+    "applicationCategory": "UtilityApplication",
+    "description": "Pre-flight weather briefings translated from aviation jargon to plain English.",
+    "operatingSystem": "Any",
+    "offers": {
+      "@type": "Offer",
+      "price": "4.99",
+      "priceCurrency": "USD"
+    }
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "Can I use BriefCast for flight planning?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "BriefCast is informational and not for operational flight planning. Always verify with official sources."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What weather data does BriefCast include?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "METARs, TAFs, AFD excerpts, PIREPs, and route hazards such as SIGMETs, AIRMETs, and TFRs."
+        }
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <main class="container">
+    <header>
+      <div class="brand-row">
+        <h1 class="brand">BriefCast</h1>
+        <button class="btn no-print" id="themeToggle" type="button" aria-label="Toggle dark mode">Dark Mode</button>
+      </div>
+      <p class="subtitle sans">Pre-flight weather briefings in plain English. Pull current conditions, forecasts, hazards, and pilot reports in one cockpit-friendly view.</p>
+    </header>
+
+    <section class="card no-print" aria-labelledby="briefing-form-title">
+      <p class="section-kicker">Flight Setup</p>
+      <h2 id="briefing-form-title">Build Your Briefing</h2>
+      <form id="briefingForm" novalidate>
+        <div class="inputs">
+          <label>
+            <span class="sans">From (ICAO or IATA)</span>
+            <input id="fromInput" type="text" name="from" list="airportList" autocomplete="off" required aria-required="true" aria-label="Departure airport" maxlength="5" />
+          </label>
+          <button class="btn" id="swapBtn" type="button" aria-label="Swap departure and destination">Swap</button>
+          <label>
+            <span class="sans">To (ICAO or IATA)</span>
+            <input id="toInput" type="text" name="to" list="airportList" autocomplete="off" required aria-required="true" aria-label="Destination airport" maxlength="5" />
+          </label>
+          <button class="btn btn-primary" id="briefBtn" type="submit" aria-label="Generate weather briefing">Generate Briefing</button>
+        </div>
+        <label style="margin-top:12px;max-width:360px;">
+          <span class="sans">Planned Departure (optional)</span>
+          <input id="departTimeInput" type="datetime-local" name="departTime" aria-label="Planned departure date and time" />
+        </label>
+        <p class="input-hint sans">Type city, airport name, ICAO, or IATA. Example: <code>KORD</code>, <code>LAX</code>, <code>Chicago O'Hare</code>.</p>
+      </form>
+      <datalist id="airportList"></datalist>
+      <p class="status" id="status" aria-live="polite"></p>
+      <p class="print-note">Not for operational flight planning. Always verify with official FAA/NWS sources before flight.</p>
+    </section>
+
+    <section class="card pro no-print" aria-labelledby="pro-title">
+      <p class="section-kicker">BriefCast Pro</p>
+      <h2 id="pro-title">Get BriefCast Pro — $4.99/mo</h2>
+      <p class="sans">Unlock AI-translated briefings, saved routes, email briefings, all airports, and an ad-free experience.</p>
+      <p class="sans"><strong>Free tier:</strong> decoded METAR/TAF basics only, no AI translation, no saved routes.</p>
+      <ul class="sans">
+        <li>AI translation of METAR/TAF/AFD into plain pilot-ready prose</li>
+        <li>Saved route presets and repeat briefing in one click</li>
+        <li>Email briefing delivery before scheduled departures</li>
+        <li>Expanded airport coverage and historical comparisons</li>
+      </ul>
+      <div class="footer-links">
+        <a class="btn btn-primary" href="https://plaincast.live" target="_blank" rel="noopener">Join Waitlist</a>
+      </div>
+      <form id="waitlistForm" class="sans" style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+        <label class="visually-hidden" for="waitlistEmail">Email</label>
+        <input id="waitlistEmail" name="email" type="email" required placeholder="Enter your email" aria-label="Email for BriefCast Pro waitlist" style="max-width:320px;" />
+        <button class="btn" type="submit">Notify Me</button>
+      </form>
+      <p class="meta" id="waitlistStatus" aria-live="polite"></p>
+    </section>
+
+    <section id="results" class="results" aria-live="polite" aria-label="Weather briefing results"></section>
+
+    <footer class="card sans">
+      <strong>Built by Jonah Berg</strong>
+      <div class="footer-links">
+        <a href="https://theblueboard.co" target="_blank" rel="noopener">The Blue Board</a>
+        <a href="https://plaincast.live" target="_blank" rel="noopener">Plaincast</a>
+        <a href="https://buymeacoffee.com/notjbg" target="_blank" rel="noopener">Buy me a coffee</a>
+        <a href="https://github.com" target="_blank" rel="noopener">GitHub</a>
+      </div>
+      <p class="meta">Disclaimer: Not for operational flight planning. Always verify with official sources.</p>
+    </footer>
+  </main>
+
+  <script>
+    const AIRPORTS_RAW = [
+      { icao: "KATL", iata: "ATL", name: "Hartsfield-Jackson Atlanta Intl", state: "GA", lat: 33.6407, lon: -84.4277 },
+      { icao: "KLAX", iata: "LAX", name: "Los Angeles Intl", state: "CA", lat: 33.9416, lon: -118.4085 },
+      { icao: "KORD", iata: "ORD", name: "Chicago O'Hare Intl", state: "IL", lat: 41.9742, lon: -87.9073 },
+      { icao: "KDFW", iata: "DFW", name: "Dallas/Fort Worth Intl", state: "TX", lat: 32.8998, lon: -97.0403 },
+      { icao: "KDEN", iata: "DEN", name: "Denver Intl", state: "CO", lat: 39.8561, lon: -104.6737 },
+      { icao: "KJFK", iata: "JFK", name: "John F. Kennedy Intl", state: "NY", lat: 40.6413, lon: -73.7781 },
+      { icao: "KSFO", iata: "SFO", name: "San Francisco Intl", state: "CA", lat: 37.6213, lon: -122.3790 },
+      { icao: "KSEA", iata: "SEA", name: "Seattle-Tacoma Intl", state: "WA", lat: 47.4502, lon: -122.3088 },
+      { icao: "KMIA", iata: "MIA", name: "Miami Intl", state: "FL", lat: 25.7959, lon: -80.2871 },
+      { icao: "KLAS", iata: "LAS", name: "Harry Reid Intl", state: "NV", lat: 36.0840, lon: -115.1537 },
+      { icao: "KPHX", iata: "PHX", name: "Phoenix Sky Harbor Intl", state: "AZ", lat: 33.4342, lon: -112.0116 },
+      { icao: "KEWR", iata: "EWR", name: "Newark Liberty Intl", state: "NJ", lat: 40.6895, lon: -74.1745 },
+      { icao: "KIAH", iata: "IAH", name: "George Bush Intercontinental", state: "TX", lat: 29.9902, lon: -95.3368 },
+      { icao: "KBOS", iata: "BOS", name: "Boston Logan Intl", state: "MA", lat: 42.3656, lon: -71.0096 },
+      { icao: "KMSP", iata: "MSP", name: "Minneapolis-Saint Paul Intl", state: "MN", lat: 44.8848, lon: -93.2223 },
+      { icao: "KDTW", iata: "DTW", name: "Detroit Metropolitan Wayne County", state: "MI", lat: 42.2162, lon: -83.3554 },
+      { icao: "KPHL", iata: "PHL", name: "Philadelphia Intl", state: "PA", lat: 39.8744, lon: -75.2424 },
+      { icao: "KLGA", iata: "LGA", name: "LaGuardia", state: "NY", lat: 40.7769, lon: -73.8740 },
+      { icao: "KBWI", iata: "BWI", name: "Baltimore/Washington Intl", state: "MD", lat: 39.1774, lon: -76.6684 },
+      { icao: "KDCA", iata: "DCA", name: "Ronald Reagan Washington National", state: "VA", lat: 38.8512, lon: -77.0402 },
+      { icao: "KIAD", iata: "IAD", name: "Washington Dulles Intl", state: "VA", lat: 38.9531, lon: -77.4565 },
+      { icao: "KSLC", iata: "SLC", name: "Salt Lake City Intl", state: "UT", lat: 40.7899, lon: -111.9791 },
+      { icao: "KSAN", iata: "SAN", name: "San Diego Intl", state: "CA", lat: 32.7338, lon: -117.1933 },
+      { icao: "KCLT", iata: "CLT", name: "Charlotte Douglas Intl", state: "NC", lat: 35.2140, lon: -80.9431 },
+      { icao: "KTPA", iata: "TPA", name: "Tampa Intl", state: "FL", lat: 27.9755, lon: -82.5332 },
+      { icao: "KPDX", iata: "PDX", name: "Portland Intl", state: "OR", lat: 45.5898, lon: -122.5951 },
+      { icao: "KHNL", iata: "HNL", name: "Daniel K. Inouye Intl", state: "HI", lat: 21.3187, lon: -157.9224 },
+      { icao: "KSTL", iata: "STL", name: "St. Louis Lambert Intl", state: "MO", lat: 38.7487, lon: -90.3700 },
+      { icao: "KCLE", iata: "CLE", name: "Cleveland Hopkins Intl", state: "OH", lat: 41.4117, lon: -81.8498 },
+      { icao: "KCMH", iata: "CMH", name: "John Glenn Columbus Intl", state: "OH", lat: 39.9980, lon: -82.8919 },
+      { icao: "KCVG", iata: "CVG", name: "Cincinnati/Northern Kentucky Intl", state: "KY", lat: 39.0488, lon: -84.6678 },
+      { icao: "KMCO", iata: "MCO", name: "Orlando Intl", state: "FL", lat: 28.4312, lon: -81.3081 },
+      { icao: "KFLL", iata: "FLL", name: "Fort Lauderdale-Hollywood Intl", state: "FL", lat: 26.0726, lon: -80.1527 },
+      { icao: "KPBI", iata: "PBI", name: "Palm Beach Intl", state: "FL", lat: 26.6832, lon: -80.0956 },
+      { icao: "KJAX", iata: "JAX", name: "Jacksonville Intl", state: "FL", lat: 30.4941, lon: -81.6879 },
+      { icao: "KRSW", iata: "RSW", name: "Southwest Florida Intl", state: "FL", lat: 26.5362, lon: -81.7552 },
+      { icao: "KRDU", iata: "RDU", name: "Raleigh-Durham Intl", state: "NC", lat: 35.8801, lon: -78.7880 },
+      { icao: "KBNA", iata: "BNA", name: "Nashville Intl", state: "TN", lat: 36.1245, lon: -86.6782 },
+      { icao: "KMEM", iata: "MEM", name: "Memphis Intl", state: "TN", lat: 35.0425, lon: -89.9767 },
+      { icao: "KMSY", iata: "MSY", name: "Louis Armstrong New Orleans Intl", state: "LA", lat: 29.9934, lon: -90.2580 },
+      { icao: "KAUS", iata: "AUS", name: "Austin-Bergstrom Intl", state: "TX", lat: 30.1975, lon: -97.6664 },
+      { icao: "KSAT", iata: "SAT", name: "San Antonio Intl", state: "TX", lat: 29.5337, lon: -98.4698 },
+      { icao: "KHOU", iata: "HOU", name: "William P. Hobby", state: "TX", lat: 29.6454, lon: -95.2789 },
+      { icao: "KDAL", iata: "DAL", name: "Dallas Love Field", state: "TX", lat: 32.8471, lon: -96.8518 },
+      { icao: "KELP", iata: "ELP", name: "El Paso Intl", state: "TX", lat: 31.8072, lon: -106.3776 },
+      { icao: "KABQ", iata: "ABQ", name: "Albuquerque Intl Sunport", state: "NM", lat: 35.0402, lon: -106.6090 },
+      { icao: "KTUS", iata: "TUS", name: "Tucson Intl", state: "AZ", lat: 32.1161, lon: -110.9410 },
+      { icao: "KBOI", iata: "BOI", name: "Boise Air Terminal", state: "ID", lat: 43.5644, lon: -116.2228 },
+      { icao: "KSJC", iata: "SJC", name: "San Jose Mineta Intl", state: "CA", lat: 37.3639, lon: -121.9289 },
+      { icao: "KOAK", iata: "OAK", name: "Oakland Intl", state: "CA", lat: 37.7126, lon: -122.2197 },
+      { icao: "KSNA", iata: "SNA", name: "John Wayne", state: "CA", lat: 33.6757, lon: -117.8678 },
+      { icao: "KLGB", iata: "LGB", name: "Long Beach", state: "CA", lat: 33.8177, lon: -118.1516 },
+      { icao: "KBUR", iata: "BUR", name: "Hollywood Burbank", state: "CA", lat: 34.2007, lon: -118.3590 },
+      { icao: "KONT", iata: "ONT", name: "Ontario Intl", state: "CA", lat: 34.0560, lon: -117.6012 },
+      { icao: "KSMF", iata: "SMF", name: "Sacramento Intl", state: "CA", lat: 38.6954, lon: -121.5908 },
+      { icao: "KFAT", iata: "FAT", name: "Fresno Yosemite Intl", state: "CA", lat: 36.7762, lon: -119.7181 },
+      { icao: "KPSP", iata: "PSP", name: "Palm Springs Intl", state: "CA", lat: 33.8297, lon: -116.5070 },
+      { icao: "KSBP", iata: "SBP", name: "San Luis Obispo County", state: "CA", lat: 35.2371, lon: -120.6424 },
+      { icao: "KSBP", iata: "SBP", name: "San Luis Obispo County Regional", state: "CA", lat: 35.2371, lon: -120.6424 },
+      { icao: "KMRY", iata: "MRY", name: "Monterey Regional", state: "CA", lat: 36.5870, lon: -121.8430 },
+      { icao: "KRNO", iata: "RNO", name: "Reno-Tahoe Intl", state: "NV", lat: 39.4991, lon: -119.7681 },
+      { icao: "KGEG", iata: "GEG", name: "Spokane Intl", state: "WA", lat: 47.6199, lon: -117.5338 },
+      { icao: "KPAE", iata: "PAE", name: "Paine Field", state: "WA", lat: 47.9063, lon: -122.2810 },
+      { icao: "KBLI", iata: "BLI", name: "Bellingham Intl", state: "WA", lat: 48.7927, lon: -122.5375 },
+      { icao: "KPWM", iata: "PWM", name: "Portland Intl Jetport", state: "ME", lat: 43.6462, lon: -70.3093 },
+      { icao: "KBTV", iata: "BTV", name: "Burlington Intl", state: "VT", lat: 44.4719, lon: -73.1533 },
+      { icao: "KALB", iata: "ALB", name: "Albany Intl", state: "NY", lat: 42.7483, lon: -73.8017 },
+      { icao: "KSYR", iata: "SYR", name: "Syracuse Hancock Intl", state: "NY", lat: 43.1112, lon: -76.1063 },
+      { icao: "KROC", iata: "ROC", name: "Greater Rochester Intl", state: "NY", lat: 43.1189, lon: -77.6724 },
+      { icao: "KBUF", iata: "BUF", name: "Buffalo Niagara Intl", state: "NY", lat: 42.9405, lon: -78.7322 },
+      { icao: "KHPN", iata: "HPN", name: "Westchester County", state: "NY", lat: 41.0670, lon: -73.7076 },
+      { icao: "KISP", iata: "ISP", name: "Long Island MacArthur", state: "NY", lat: 40.7952, lon: -73.1002 },
+      { icao: "KMDW", iata: "MDW", name: "Chicago Midway Intl", state: "IL", lat: 41.7868, lon: -87.7522 },
+      { icao: "KMKE", iata: "MKE", name: "Milwaukee Mitchell Intl", state: "WI", lat: 42.9472, lon: -87.8966 },
+      { icao: "KMSN", iata: "MSN", name: "Dane County Regional", state: "WI", lat: 43.1399, lon: -89.3375 },
+      { icao: "KGRR", iata: "GRR", name: "Gerald R. Ford Intl", state: "MI", lat: 42.8808, lon: -85.5228 },
+      { icao: "KFNT", iata: "FNT", name: "Bishop Intl", state: "MI", lat: 42.9654, lon: -83.7436 },
+      { icao: "KLAN", iata: "LAN", name: "Capital Region Intl", state: "MI", lat: 42.7787, lon: -84.5874 },
+      { icao: "KTVC", iata: "TVC", name: "Cherry Capital", state: "MI", lat: 44.7414, lon: -85.5822 },
+      { icao: "KIND", iata: "IND", name: "Indianapolis Intl", state: "IN", lat: 39.7173, lon: -86.2944 },
+      { icao: "KSDF", iata: "SDF", name: "Louisville Muhammad Ali Intl", state: "KY", lat: 38.1744, lon: -85.7360 },
+      { icao: "KLEX", iata: "LEX", name: "Blue Grass", state: "KY", lat: 38.0365, lon: -84.6059 },
+      { icao: "KDAY", iata: "DAY", name: "James M. Cox Dayton Intl", state: "OH", lat: 39.9024, lon: -84.2194 },
+      { icao: "KCAK", iata: "CAK", name: "Akron-Canton", state: "OH", lat: 40.9161, lon: -81.4422 },
+      { icao: "KCVG", iata: "CVG", name: "Cincinnati/Northern Kentucky Intl", state: "KY", lat: 39.0488, lon: -84.6678 },
+      { icao: "KPIT", iata: "PIT", name: "Pittsburgh Intl", state: "PA", lat: 40.4915, lon: -80.2329 },
+      { icao: "KABE", iata: "ABE", name: "Lehigh Valley Intl", state: "PA", lat: 40.6521, lon: -75.4408 },
+      { icao: "KMDT", iata: "MDT", name: "Harrisburg Intl", state: "PA", lat: 40.1935, lon: -76.7634 },
+      { icao: "KAVP", iata: "AVP", name: "Wilkes-Barre/Scranton Intl", state: "PA", lat: 41.3385, lon: -75.7234 },
+      { icao: "KRIC", iata: "RIC", name: "Richmond Intl", state: "VA", lat: 37.5052, lon: -77.3197 },
+      { icao: "KORF", iata: "ORF", name: "Norfolk Intl", state: "VA", lat: 36.8946, lon: -76.2012 },
+      { icao: "KROA", iata: "ROA", name: "Roanoke-Blacksburg Regional", state: "VA", lat: 37.3255, lon: -79.9754 },
+      { icao: "KCHS", iata: "CHS", name: "Charleston Intl", state: "SC", lat: 32.8986, lon: -80.0405 },
+      { icao: "KGSP", iata: "GSP", name: "Greenville-Spartanburg Intl", state: "SC", lat: 34.8957, lon: -82.2189 },
+      { icao: "KCAE", iata: "CAE", name: "Columbia Metropolitan", state: "SC", lat: 33.9388, lon: -81.1195 },
+      { icao: "KSAV", iata: "SAV", name: "Savannah/Hilton Head Intl", state: "GA", lat: 32.1276, lon: -81.2021 },
+      { icao: "KAGS", iata: "AGS", name: "Augusta Regional", state: "GA", lat: 33.3699, lon: -81.9645 },
+      { icao: "KCHS", iata: "CHS", name: "Charleston Intl", state: "SC", lat: 32.8986, lon: -80.0405 },
+      { icao: "KBHM", iata: "BHM", name: "Birmingham-Shuttlesworth Intl", state: "AL", lat: 33.5629, lon: -86.7535 },
+      { icao: "KMOB", iata: "MOB", name: "Mobile Regional", state: "AL", lat: 30.6914, lon: -88.2428 },
+      { icao: "KHSV", iata: "HSV", name: "Huntsville Intl", state: "AL", lat: 34.6404, lon: -86.7731 },
+      { icao: "KJAN", iata: "JAN", name: "Jackson-Medgar Wiley Evers Intl", state: "MS", lat: 32.3112, lon: -90.0759 },
+      { icao: "KGPT", iata: "GPT", name: "Gulfport-Biloxi Intl", state: "MS", lat: 30.4073, lon: -89.0701 },
+      { icao: "KTLH", iata: "TLH", name: "Tallahassee Intl", state: "FL", lat: 30.3965, lon: -84.3503 },
+      { icao: "KPNS", iata: "PNS", name: "Pensacola Intl", state: "FL", lat: 30.4734, lon: -87.1866 },
+      { icao: "KECP", iata: "ECP", name: "Northwest Florida Beaches Intl", state: "FL", lat: 30.3571, lon: -85.7954 },
+      { icao: "KSRQ", iata: "SRQ", name: "Sarasota Bradenton Intl", state: "FL", lat: 27.3946, lon: -82.5544 },
+      { icao: "KPIE", iata: "PIE", name: "St. Pete-Clearwater Intl", state: "FL", lat: 27.9102, lon: -82.6874 },
+      { icao: "KAVL", iata: "AVL", name: "Asheville Regional", state: "NC", lat: 35.4362, lon: -82.5418 },
+      { icao: "KFAY", iata: "FAY", name: "Fayetteville Regional", state: "NC", lat: 34.9912, lon: -78.8803 },
+      { icao: "KILM", iata: "ILM", name: "Wilmington Intl", state: "NC", lat: 34.2706, lon: -77.9026 },
+      { icao: "KMYR", iata: "MYR", name: "Myrtle Beach Intl", state: "SC", lat: 33.6798, lon: -78.9283 },
+      { icao: "KTYS", iata: "TYS", name: "McGhee Tyson", state: "TN", lat: 35.8110, lon: -83.9940 },
+      { icao: "KCHA", iata: "CHA", name: "Chattanooga Metropolitan", state: "TN", lat: 35.0353, lon: -85.2038 },
+      { icao: "KTUL", iata: "TUL", name: "Tulsa Intl", state: "OK", lat: 36.1984, lon: -95.8881 },
+      { icao: "KOKC", iata: "OKC", name: "Will Rogers World", state: "OK", lat: 35.3931, lon: -97.6007 },
+      { icao: "KXNA", iata: "XNA", name: "Northwest Arkansas National", state: "AR", lat: 36.2819, lon: -94.3068 },
+      { icao: "KLIT", iata: "LIT", name: "Bill and Hillary Clinton National", state: "AR", lat: 34.7294, lon: -92.2243 },
+      { icao: "KDSM", iata: "DSM", name: "Des Moines Intl", state: "IA", lat: 41.5340, lon: -93.6631 },
+      { icao: "KCID", iata: "CID", name: "The Eastern Iowa", state: "IA", lat: 41.8847, lon: -91.7108 },
+      { icao: "KOMA", iata: "OMA", name: "Eppley Airfield", state: "NE", lat: 41.3032, lon: -95.8941 },
+      { icao: "KLNK", iata: "LNK", name: "Lincoln", state: "NE", lat: 40.8510, lon: -96.7592 },
+      { icao: "KFSD", iata: "FSD", name: "Sioux Falls Regional", state: "SD", lat: 43.5814, lon: -96.7419 },
+      { icao: "KRAP", iata: "RAP", name: "Rapid City Regional", state: "SD", lat: 44.0453, lon: -103.0574 },
+      { icao: "KBIS", iata: "BIS", name: "Bismarck Municipal", state: "ND", lat: 46.7727, lon: -100.7467 },
+      { icao: "KFAR", iata: "FAR", name: "Hector Intl", state: "ND", lat: 46.9207, lon: -96.8158 },
+      { icao: "KGFK", iata: "GFK", name: "Grand Forks Intl", state: "ND", lat: 47.9493, lon: -97.1761 },
+      { icao: "KMSO", iata: "MSO", name: "Missoula Montana", state: "MT", lat: 46.9163, lon: -114.0906 },
+      { icao: "KBZN", iata: "BZN", name: "Bozeman Yellowstone Intl", state: "MT", lat: 45.7775, lon: -111.1601 },
+      { icao: "KHLN", iata: "HLN", name: "Helena Regional", state: "MT", lat: 46.6068, lon: -111.9828 },
+      { icao: "KBIL", iata: "BIL", name: "Billings Logan Intl", state: "MT", lat: 45.8077, lon: -108.5429 },
+      { icao: "KGTF", iata: "GTF", name: "Great Falls Intl", state: "MT", lat: 47.4820, lon: -111.3707 },
+      { icao: "KIDA", iata: "IDA", name: "Idaho Falls Regional", state: "ID", lat: 43.5146, lon: -112.0708 },
+      { icao: "KPIH", iata: "PIH", name: "Pocatello Regional", state: "ID", lat: 42.9098, lon: -112.5965 },
+      { icao: "KTWF", iata: "TWF", name: "Magic Valley Regional", state: "ID", lat: 42.4818, lon: -114.4877 },
+      { icao: "KJAC", iata: "JAC", name: "Jackson Hole", state: "WY", lat: 43.6073, lon: -110.7377 },
+      { icao: "KCOD", iata: "COD", name: "Yellowstone Regional", state: "WY", lat: 44.5202, lon: -109.0238 },
+      { icao: "KCPR", iata: "CPR", name: "Casper/Natrona County Intl", state: "WY", lat: 42.9080, lon: -106.4645 },
+      { icao: "KCYS", iata: "CYS", name: "Cheyenne Regional", state: "WY", lat: 41.1557, lon: -104.8118 },
+      { icao: "KGJT", iata: "GJT", name: "Grand Junction Regional", state: "CO", lat: 39.1224, lon: -108.5267 },
+      { icao: "KCOS", iata: "COS", name: "Colorado Springs", state: "CO", lat: 38.8058, lon: -104.7009 },
+      { icao: "KEGE", iata: "EGE", name: "Eagle County Regional", state: "CO", lat: 39.6426, lon: -106.9177 },
+      { icao: "KASE", iata: "ASE", name: "Aspen/Pitkin County", state: "CO", lat: 39.2232, lon: -106.8688 },
+      { icao: "KTEX", iata: "TEX", name: "Telluride Regional", state: "CO", lat: 37.9538, lon: -107.9085 },
+      { icao: "KFLG", iata: "FLG", name: "Flagstaff Pulliam", state: "AZ", lat: 35.1385, lon: -111.6712 },
+      { icao: "KPRC", iata: "PRC", name: "Prescott Regional", state: "AZ", lat: 34.6545, lon: -112.4196 },
+      { icao: "KGCN", iata: "GCN", name: "Grand Canyon National Park", state: "AZ", lat: 35.9524, lon: -112.1469 },
+      { icao: "KSAF", iata: "SAF", name: "Santa Fe Regional", state: "NM", lat: 35.6171, lon: -106.0894 },
+      { icao: "KROW", iata: "ROW", name: "Roswell Air Center", state: "NM", lat: 33.3016, lon: -104.5305 },
+      { icao: "KLRD", iata: "LRD", name: "Laredo Intl", state: "TX", lat: 27.5438, lon: -99.4616 },
+      { icao: "KMAF", iata: "MAF", name: "Midland Intl Air and Space Port", state: "TX", lat: 31.9425, lon: -102.2019 },
+      { icao: "KLBB", iata: "LBB", name: "Lubbock Preston Smith Intl", state: "TX", lat: 33.6636, lon: -101.8228 },
+      { icao: "KAMA", iata: "AMA", name: "Rick Husband Amarillo Intl", state: "TX", lat: 35.2194, lon: -101.7059 },
+      { icao: "KCRP", iata: "CRP", name: "Corpus Christi Intl", state: "TX", lat: 27.7704, lon: -97.5012 },
+      { icao: "KMFE", iata: "MFE", name: "McAllen Intl", state: "TX", lat: 26.1761, lon: -98.2386 },
+      { icao: "KBRO", iata: "BRO", name: "Brownsville South Padre Island Intl", state: "TX", lat: 25.9068, lon: -97.4259 },
+      { icao: "KSHV", iata: "SHV", name: "Shreveport Regional", state: "LA", lat: 32.4466, lon: -93.8256 },
+      { icao: "KLCH", iata: "LCH", name: "Lake Charles Regional", state: "LA", lat: 30.1261, lon: -93.2234 },
+      { icao: "KBTR", iata: "BTR", name: "Baton Rouge Metropolitan", state: "LA", lat: 30.5332, lon: -91.1496 },
+      { icao: "KLFT", iata: "LFT", name: "Lafayette Regional", state: "LA", lat: 30.2053, lon: -91.9876 },
+      { icao: "KMLU", iata: "MLU", name: "Monroe Regional", state: "LA", lat: 32.5109, lon: -92.0377 },
+      { icao: "KICT", iata: "ICT", name: "Wichita Dwight D. Eisenhower National", state: "KS", lat: 37.6499, lon: -97.4331 },
+      { icao: "KMHK", iata: "MHK", name: "Manhattan Regional", state: "KS", lat: 39.1410, lon: -96.6708 },
+      { icao: "KSGF", iata: "SGF", name: "Springfield-Branson National", state: "MO", lat: 37.2457, lon: -93.3886 },
+      { icao: "KCOU", iata: "COU", name: "Columbia Regional", state: "MO", lat: 38.8181, lon: -92.2196 },
+      { icao: "KMCI", iata: "MCI", name: "Kansas City Intl", state: "MO", lat: 39.2976, lon: -94.7139 },
+      { icao: "KSTJ", iata: "STJ", name: "Rosecrans Memorial", state: "MO", lat: 39.7719, lon: -94.9097 },
+      { icao: "KTOL", iata: "TOL", name: "Toledo Express", state: "OH", lat: 41.5868, lon: -83.8078 },
+      { icao: "KERI", iata: "ERI", name: "Erie Intl", state: "PA", lat: 42.0831, lon: -80.1739 },
+      { icao: "KBDL", iata: "BDL", name: "Bradley Intl", state: "CT", lat: 41.9389, lon: -72.6832 },
+      { icao: "KPVD", iata: "PVD", name: "Rhode Island T. F. Green Intl", state: "RI", lat: 41.7240, lon: -71.4282 },
+      { icao: "KMHT", iata: "MHT", name: "Manchester-Boston Regional", state: "NH", lat: 42.9326, lon: -71.4357 },
+      { icao: "KACY", iata: "ACY", name: "Atlantic City Intl", state: "NJ", lat: 39.4576, lon: -74.5772 },
+      { icao: "KTTN", iata: "TTN", name: "Trenton-Mercer", state: "NJ", lat: 40.2767, lon: -74.8135 },
+      { icao: "KILG", iata: "ILG", name: "Wilmington", state: "DE", lat: 39.6787, lon: -75.6065 },
+      { icao: "KCRW", iata: "CRW", name: "West Virginia Intl Yeager", state: "WV", lat: 38.3731, lon: -81.5932 },
+      { icao: "KHTS", iata: "HTS", name: "Tri-State", state: "WV", lat: 38.3667, lon: -82.5579 },
+      { icao: "KTRI", iata: "TRI", name: "Tri-Cities Regional", state: "TN", lat: 36.4752, lon: -82.4074 },
+      { icao: "KGSO", iata: "GSO", name: "Piedmont Triad Intl", state: "NC", lat: 36.0978, lon: -79.9373 },
+      { icao: "KCLT", iata: "CLT", name: "Charlotte Douglas Intl", state: "NC", lat: 35.2140, lon: -80.9431 },
+      { icao: "KFSD", iata: "FSD", name: "Sioux Falls Regional", state: "SD", lat: 43.5814, lon: -96.7419 },
+      { icao: "KGRB", iata: "GRB", name: "Green Bay Austin Straubel Intl", state: "WI", lat: 44.4851, lon: -88.1296 },
+      { icao: "KATW", iata: "ATW", name: "Appleton Intl", state: "WI", lat: 44.2581, lon: -88.5191 },
+      { icao: "KCWA", iata: "CWA", name: "Central Wisconsin", state: "WI", lat: 44.7776, lon: -89.6668 },
+      { icao: "KCMX", iata: "CMX", name: "Houghton County Memorial", state: "MI", lat: 47.1684, lon: -88.4891 },
+      { icao: "KDLH", iata: "DLH", name: "Duluth Intl", state: "MN", lat: 46.8421, lon: -92.1936 },
+      { icao: "KRST", iata: "RST", name: "Rochester Intl", state: "MN", lat: 43.9083, lon: -92.5000 },
+      { icao: "KATY", iata: "ATY", name: "Watertown Regional", state: "SD", lat: 44.9140, lon: -97.1547 },
+      { icao: "KMQT", iata: "MQT", name: "Sawyer Intl", state: "MI", lat: 46.3536, lon: -87.3954 },
+      { icao: "KPWM", iata: "PWM", name: "Portland Intl Jetport", state: "ME", lat: 43.6462, lon: -70.3093 },
+      { icao: "KBGR", iata: "BGR", name: "Bangor Intl", state: "ME", lat: 44.8074, lon: -68.8281 },
+      { icao: "KBHB", iata: "BHB", name: "Hancock County-Bar Harbor", state: "ME", lat: 44.4500, lon: -68.3617 },
+      { icao: "KFAI", iata: "FAI", name: "Fairbanks Intl", state: "AK", lat: 64.8151, lon: -147.8560 },
+      { icao: "PANC", iata: "ANC", name: "Ted Stevens Anchorage Intl", state: "AK", lat: 61.1743, lon: -149.9985 },
+      { icao: "PAJN", iata: "JNU", name: "Juneau Intl", state: "AK", lat: 58.3549, lon: -134.5763 },
+      { icao: "PABE", iata: "BET", name: "Bethel", state: "AK", lat: 60.7798, lon: -161.8380 },
+      { icao: "PAKT", iata: "KTN", name: "Ketchikan Intl", state: "AK", lat: 55.3556, lon: -131.7137 },
+      { icao: "PAGS", iata: "GST", name: "Gustavus", state: "AK", lat: 58.4253, lon: -135.7074 },
+      { icao: "PAOM", iata: "OME", name: "Nome", state: "AK", lat: 64.5122, lon: -165.4453 },
+      { icao: "PHOG", iata: "OGG", name: "Kahului", state: "HI", lat: 20.8986, lon: -156.4305 },
+      { icao: "PHKO", iata: "KOA", name: "Ellison Onizuka Kona Intl", state: "HI", lat: 19.7388, lon: -156.0456 },
+      { icao: "PHLI", iata: "LIH", name: "Lihue", state: "HI", lat: 21.9759, lon: -159.3389 },
+      { icao: "PHNY", iata: "LNY", name: "Lanai", state: "HI", lat: 20.7856, lon: -156.9514 },
+      { icao: "PHTO", iata: "ITO", name: "Hilo Intl", state: "HI", lat: 19.7214, lon: -155.0485 },
+      { icao: "TJSJ", iata: "SJU", name: "Luis Munoz Marin Intl", state: "PR", lat: 18.4394, lon: -66.0018 },
+      { icao: "TJBQ", iata: "BQN", name: "Rafael Hernandez", state: "PR", lat: 18.4949, lon: -67.1294 },
+      { icao: "TJPS", iata: "PSE", name: "Mercedita", state: "PR", lat: 18.0083, lon: -66.5630 },
+      { icao: "PGUM", iata: "GUM", name: "Antonio B. Won Pat Intl", state: "GU", lat: 13.4835, lon: 144.7956 },
+      { icao: "PGSN", iata: "SPN", name: "Saipan Intl", state: "MP", lat: 15.1190, lon: 145.7294 },
+      { icao: "KVPS", iata: "VPS", name: "Destin-Fort Walton Beach", state: "FL", lat: 30.4832, lon: -86.5254 },
+      { icao: "KSFB", iata: "SFB", name: "Orlando Sanford Intl", state: "FL", lat: 28.7776, lon: -81.2375 },
+      { icao: "KDAB", iata: "DAB", name: "Daytona Beach Intl", state: "FL", lat: 29.1799, lon: -81.0581 },
+      { icao: "KPHF", iata: "PHF", name: "Newport News/Williamsburg Intl", state: "VA", lat: 37.1319, lon: -76.4929 },
+      { icao: "KLYH", iata: "LYH", name: "Lynchburg Regional", state: "VA", lat: 37.3267, lon: -79.2004 },
+      { icao: "KCHO", iata: "CHO", name: "Charlottesville-Albemarle", state: "VA", lat: 38.1386, lon: -78.4529 },
+      { icao: "KFAT", iata: "FAT", name: "Fresno Yosemite Intl", state: "CA", lat: 36.7762, lon: -119.7181 },
+      { icao: "KRDD", iata: "RDD", name: "Redding Regional", state: "CA", lat: 40.5089, lon: -122.2934 },
+      { icao: "KACV", iata: "ACV", name: "California Redwood Coast-Humboldt", state: "CA", lat: 40.9781, lon: -124.1086 },
+      { icao: "KMFR", iata: "MFR", name: "Rogue Valley Intl-Medford", state: "OR", lat: 42.3742, lon: -122.8735 },
+      { icao: "KEUG", iata: "EUG", name: "Mahlon Sweet Field", state: "OR", lat: 44.1246, lon: -123.2110 },
+      { icao: "KPSC", iata: "PSC", name: "Tri-Cities", state: "WA", lat: 46.2647, lon: -119.1190 },
+      { icao: "KYKM", iata: "YKM", name: "Yakima Air Terminal", state: "WA", lat: 46.5682, lon: -120.5440 },
+      { icao: "KPUW", iata: "PUW", name: "Pullman-Moscow Regional", state: "WA", lat: 46.7439, lon: -117.1096 },
+      { icao: "KCOD", iata: "COD", name: "Yellowstone Regional", state: "WY", lat: 44.5202, lon: -109.0238 }
+    ];
+
+    const AIRPORTS = AIRPORTS_RAW
+      .filter((airport) => airport && airport.icao)
+      .filter((airport, index, arr) => index === arr.findIndex((candidate) => candidate.icao === airport.icao))
+      .slice(0, 200);
+
+    const glossary = {
+      METAR: "A routine aviation weather report describing current conditions.",
+      TAF: "Terminal Aerodrome Forecast, a forecast for airport weather over time.",
+      AFD: "Area Forecast Discussion from NWS meteorologists with forecast reasoning.",
+      PIREP: "Pilot weather report observed in flight.",
+      SIGMET: "Significant meteorological advisory for severe en-route hazards.",
+      AIRMET: "Advisory for less severe but operationally relevant weather hazards.",
+      TFR: "Temporary Flight Restriction airspace notice.",
+      VFR: "Visual Flight Rules weather category.",
+      MVFR: "Marginal Visual Flight Rules weather category.",
+      IFR: "Instrument Flight Rules weather category.",
+      LIFR: "Low Instrument Flight Rules weather category."
+    };
+
+    const state = {
+      airportIndex: new Map(),
+      codeIndex: new Map(),
+      busy: false
+    };
+
+    const els = {
+      fromInput: document.getElementById("fromInput"),
+      toInput: document.getElementById("toInput"),
+      departTimeInput: document.getElementById("departTimeInput"),
+      airportList: document.getElementById("airportList"),
+      briefingForm: document.getElementById("briefingForm"),
+      swapBtn: document.getElementById("swapBtn"),
+      briefBtn: document.getElementById("briefBtn"),
+      status: document.getElementById("status"),
+      results: document.getElementById("results"),
+      themeToggle: document.getElementById("themeToggle"),
+      waitlistForm: document.getElementById("waitlistForm"),
+      waitlistEmail: document.getElementById("waitlistEmail"),
+      waitlistStatus: document.getElementById("waitlistStatus")
+    };
+
+    function normalizeCode(value) {
+      return String(value || "").trim().toUpperCase();
+    }
+
+    function addAirportLookup() {
+      AIRPORTS.forEach((airport) => {
+        state.airportIndex.set(airport.icao, airport);
+        if (airport.iata) state.codeIndex.set(airport.iata, airport.icao);
+      });
+    }
+
+    function createAirportOptions() {
+      const fragment = document.createDocumentFragment();
+      AIRPORTS.forEach((airport) => {
+        const opt = document.createElement("option");
+        opt.value = airport.icao;
+        opt.label = `${airport.iata || "---"} · ${airport.name} (${airport.state})`;
+        fragment.appendChild(opt);
+      });
+      els.airportList.appendChild(fragment);
+    }
+
+    function resolveAirport(input) {
+      const raw = normalizeCode(input);
+      if (!raw) return null;
+      if (state.airportIndex.has(raw)) return raw;
+      if (state.codeIndex.has(raw)) return state.codeIndex.get(raw);
+
+      const fuzzy = AIRPORTS.find((a) => {
+        const target = `${a.name} ${a.state} ${a.icao} ${a.iata || ""}`.toUpperCase();
+        return target.includes(raw);
+      });
+      return fuzzy ? fuzzy.icao : null;
+    }
+
+    function escapeHtml(text) {
+      return String(text || "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function withGlossaryTerms(text) {
+      let out = escapeHtml(text);
+      Object.entries(glossary).forEach(([term, meaning]) => {
+        const re = new RegExp(`\\b${term}\\b`, "g");
+        out = out.replace(re, `<abbr class="term" title="${escapeHtml(meaning)}">${term}</abbr>`);
+      });
+      return out;
+    }
+
+    function categoryBadge(category) {
+      const c = (category || "UNKNOWN").toUpperCase();
+      const css = ["vfr", "mvfr", "ifr", "lifr"].includes(c.toLowerCase()) ? c.toLowerCase() : "mvfr";
+      return `<span class="badge ${css}" aria-label="Flight category ${escapeHtml(c)}">${escapeHtml(c)}</span>`;
+    }
+
+    function parseMetar(raw) {
+      const fallback = {
+        raw,
+        wind: "Wind not parsed",
+        visibility: "Visibility unknown",
+        clouds: "Cloud layers unavailable",
+        tempDew: "Temperature/dewpoint unavailable",
+        altimeter: "Altimeter unavailable",
+        weather: "No significant weather decoded"
+      };
+      if (!raw || typeof raw !== "string") return fallback;
+
+      const tokens = raw.trim().split(/\s+/);
+      const windMatch = tokens.find((t) => /^(?:VRB\d{2,3}KT|\d{3}\d{2,3}(?:G\d{2,3})?KT)$/.test(t));
+      const visMatch = tokens.find((t) => /^(\d+|\d+\/\d+|P6)SM$/.test(t));
+      const altMatch = tokens.find((t) => /^A\d{4}$/.test(t));
+      const tempDewMatch = tokens.find((t) => /^M?\d{2}\/M?\d{2}$/.test(t));
+      const cloudTokens = tokens.filter((t) => /^(FEW|SCT|BKN|OVC|VV)\d{3}/.test(t));
+      const wxTokens = tokens.filter((t) => /^[-+]?([A-Z]{2,})$/.test(t) && /RA|SN|TS|FG|BR|HZ|DZ|FZ|GR/.test(t));
+
+      let wind = "Wind calm/variable";
+      if (windMatch) {
+        if (windMatch.startsWith("VRB")) {
+          wind = `Wind variable at ${windMatch.replace("VRB", "").replace("KT", "")} kt`;
+        } else {
+          const match = windMatch.match(/^(\d{3})(\d{2,3})(G(\d{2,3}))?KT$/);
+          if (match) {
+            wind = `Wind ${match[1]}° at ${match[2]} kt`;
+            if (match[4]) wind += ` gusting ${match[4]} kt`;
+          }
+        }
+      }
+
+      let visibility = "Visibility unavailable";
+      if (visMatch) {
+        visibility = visMatch === "P6SM" ? "Visibility greater than 6 statute miles" : `Visibility ${visMatch.replace("SM", " statute miles")}`;
+      }
+
+      const cloudMap = { FEW: "few", SCT: "scattered", BKN: "broken", OVC: "overcast", VV: "vertical visibility" };
+      const clouds = cloudTokens.length
+        ? cloudTokens.map((c) => {
+            const layer = c.slice(0, 3);
+            const height = Number(c.slice(3)) * 100;
+            return `${cloudMap[layer] || layer} clouds at ${height.toLocaleString()} ft`;
+          }).join(", ")
+        : "No significant cloud layer reported";
+
+      let tempDew = "Temperature/dewpoint unavailable";
+      if (tempDewMatch) {
+        const [t, d] = tempDewMatch.split("/").map((v) => v.replace("M", "-"));
+        tempDew = `Temperature ${t}°C, dew point ${d}°C`;
+      }
+
+      let altimeter = "Altimeter unavailable";
+      if (altMatch) {
+        const qnh = `${altMatch.slice(1, 3)}.${altMatch.slice(3)}`;
+        altimeter = `Altimeter ${qnh} inHg`;
+      }
+
+      const wxLookup = {
+        RA: "rain",
+        SN: "snow",
+        TS: "thunderstorm",
+        FG: "fog",
+        BR: "mist",
+        HZ: "haze",
+        DZ: "drizzle",
+        FZ: "freezing",
+        GR: "hail"
+      };
+      const weather = wxTokens.length
+        ? wxTokens.map((t) => {
+            const intensity = t.startsWith("+") ? "heavy " : t.startsWith("-") ? "light " : "";
+            const code = t.replace(/^[-+]/, "");
+            for (const [k, v] of Object.entries(wxLookup)) {
+              if (code.includes(k)) return intensity + v;
+            }
+            return t;
+          }).join(", ")
+        : "No significant weather decoded";
+
+      return { raw, wind, visibility, clouds, tempDew, altimeter, weather };
+    }
+
+    function parseTaf(raw) {
+      if (!raw || typeof raw !== "string") return { raw: raw || "", periods: [] };
+      const tokens = raw.replace(/\n/g, " ").split(/\s+/);
+      const groups = [];
+      let current = [];
+
+      tokens.forEach((token) => {
+        if (/^(FM\d{6}|TEMPO|BECMG|PROB\d{2})/.test(token) && current.length) {
+          groups.push(current.join(" "));
+          current = [token];
+        } else {
+          current.push(token);
+        }
+      });
+      if (current.length) groups.push(current.join(" "));
+
+      const periods = groups.map((g, idx) => {
+        let label = idx === 0 ? "Initial" : "Change";
+        const fm = g.match(/FM(\d{2})(\d{2})(\d{2})/);
+        if (fm) label = `From day ${fm[1]} at ${fm[2]}:${fm[3]}Z`;
+        if (g.includes("TEMPO")) label = "Temporary fluctuations";
+        if (g.includes("BECMG")) label = "Becoming";
+        const metarLike = parseMetar(g);
+        return { label, text: g, decoded: metarLike };
+      });
+
+      return { raw, periods };
+    }
+
+    function renderAirportWeather(title, airport, metar, taf) {
+      const metarDecoded = parseMetar(metar?.rawOb || metar?.raw || "");
+      const tafDecoded = parseTaf(taf?.rawTAF || taf?.raw || "");
+
+      const tafPeriods = tafDecoded.periods.length
+        ? tafDecoded.periods.slice(0, 4).map((p) => `<li><strong>${escapeHtml(p.label)}:</strong> ${withGlossaryTerms(p.decoded.weather)}; ${escapeHtml(p.decoded.visibility)}; ${escapeHtml(p.decoded.clouds)}.</li>`).join("")
+        : "<li>No TAF data available.</li>";
+
+      return `
+        <article class="card" aria-label="${escapeHtml(title)} weather">
+          <p class="section-kicker">${escapeHtml(title)}</p>
+          <h2>${escapeHtml(airport?.name || "Unknown Airport")} (${escapeHtml(airport?.icao || "----")})</h2>
+          <p>${withGlossaryTerms(metar?.translation || `Current ${"METAR"}: ${metarDecoded.wind}. ${metarDecoded.visibility}. ${metarDecoded.clouds}. ${metarDecoded.tempDew}. ${metarDecoded.altimeter}. Weather: ${metarDecoded.weather}.`)}</p>
+          <details>
+            <summary class="sans">Raw METAR</summary>
+            <pre class="mono">${escapeHtml(metarDecoded.raw || "No METAR available")}</pre>
+          </details>
+          <h3 class="sans" style="margin:14px 0 8px;font-size:0.98rem;">TAF Outlook</h3>
+          <p>${withGlossaryTerms(taf?.translation || "Forecast periods decoded below.")}</p>
+          <ul class="sans">${tafPeriods}</ul>
+          <details>
+            <summary class="sans">Raw TAF</summary>
+            <pre class="mono">${escapeHtml(tafDecoded.raw || "No TAF available")}</pre>
+          </details>
+        </article>
+      `;
+    }
+
+    function renderBriefing(data, fromCode, toCode) {
+      const fromAirport = state.airportIndex.get(fromCode) || { icao: fromCode, name: fromCode };
+      const toAirport = state.airportIndex.get(toCode) || { icao: toCode, name: toCode };
+      const hazards = (data.hazards || []).slice(0, 10);
+      const pireps = (data.pireps || []).slice(0, 10);
+
+      const hazardHtml = hazards.length
+        ? hazards.map((h) => `<li>${withGlossaryTerms(h)}</li>`).join("")
+        : "<li>No active route hazards returned.</li>";
+      const pirepHtml = pireps.length
+        ? pireps.map((p) => `<li>${withGlossaryTerms(p)}</li>`).join("")
+        : "<li>No recent PIREPs near route endpoints.</li>";
+
+      const routeSummary = data.routeSummary || `Route ${fromCode} to ${toCode}: no major organized hazards flagged in current pull, but review raw sections before departure.`;
+      const afd = data.afd?.summary || data.afd?.raw || "No area forecast discussion available for this route.";
+      const depCategory = (data.conditions?.departure || "UNKNOWN").toUpperCase();
+      const destCategory = (data.conditions?.destination || "UNKNOWN").toUpperCase();
+
+      els.results.innerHTML = `
+        <section class="card">
+          <p class="section-kicker">Route Summary</p>
+          <h2>${escapeHtml(fromCode)} to ${escapeHtml(toCode)}</h2>
+          <p>${withGlossaryTerms(routeSummary)}</p>
+          <p class="meta">Generated: ${new Date().toLocaleString()}</p>
+        </section>
+        <div class="grid-2">
+          ${renderAirportWeather("Departure Weather", fromAirport, data.departure?.metar || {}, data.departure?.taf || {})}
+          ${renderAirportWeather("Destination Weather", toAirport, data.destination?.metar || {}, data.destination?.taf || {})}
+        </div>
+        <section class="card">
+          <p class="section-kicker">Area Forecast Discussion</p>
+          <h2>Forecaster Context (${fromCode}/${toCode})</h2>
+          <p>${withGlossaryTerms(afd)}</p>
+          <details>
+            <summary class="sans">Raw AFD Excerpt</summary>
+            <pre class="mono">${escapeHtml(data.afd?.raw || "No raw AFD excerpt available.")}</pre>
+          </details>
+        </section>
+        <section class="card">
+          <p class="section-kicker">Hazards & Alerts</p>
+          <h2>Active SIGMETs, AIRMETs, and TFRs</h2>
+          <ul class="sans">${hazardHtml}</ul>
+        </section>
+        <section class="card">
+          <p class="section-kicker">PIREPs</p>
+          <h2>Recent Pilot Reports</h2>
+          <ul class="sans">${pirepHtml}</ul>
+        </section>
+        <section class="card">
+          <p class="section-kicker">Conditions Summary</p>
+          <h2>Flight Category at Route Endpoints</h2>
+          <p class="sans"><strong>Departure ${escapeHtml(fromCode)}:</strong> ${categoryBadge(depCategory)} &nbsp; <strong>Destination ${escapeHtml(toCode)}:</strong> ${categoryBadge(destCategory)}</p>
+        </section>
+      `;
+    }
+
+    async function fetchBriefing(from, to, departTime) {
+      const qs = new URLSearchParams({ from, to });
+      if (departTime) qs.set("departTime", departTime);
+      const res = await fetch(`/api/briefing?${qs.toString()}`);
+      if (!res.ok) {
+        const msg = await res.text();
+        throw new Error(msg || `Briefing fetch failed: ${res.status}`);
+      }
+      return res.json();
+    }
+
+    function setStatus(message, isError = false) {
+      els.status.textContent = message;
+      els.status.className = isError ? "status error" : "status";
+    }
+
+    async function onSubmit(event) {
+      event.preventDefault();
+      if (state.busy) return;
+
+      const fromCode = resolveAirport(els.fromInput.value);
+      const toCode = resolveAirport(els.toInput.value);
+      const departTime = els.departTimeInput.value;
+
+      if (!fromCode || !toCode) {
+        setStatus("Enter valid departure and destination airports.", true);
+        return;
+      }
+      if (fromCode === toCode) {
+        setStatus("Departure and destination cannot be the same.", true);
+        return;
+      }
+
+      state.busy = true;
+      els.briefBtn.disabled = true;
+      setStatus(`Loading briefing for ${fromCode} → ${toCode} ...`);
+      els.results.innerHTML = `<section class="card"><p class="sans">Loading weather data and generating summary...</p></section>`;
+
+      try {
+        const data = await fetchBriefing(fromCode, toCode, departTime);
+        renderBriefing(data, fromCode, toCode);
+        setStatus(`Briefing ready for ${fromCode} to ${toCode}.`);
+      } catch (error) {
+        els.results.innerHTML = "";
+        setStatus(`Unable to load briefing: ${error.message}`, true);
+      } finally {
+        state.busy = false;
+        els.briefBtn.disabled = false;
+      }
+    }
+
+    function onSwap() {
+      const from = els.fromInput.value;
+      els.fromInput.value = els.toInput.value;
+      els.toInput.value = from;
+      setStatus("Departure and destination swapped.");
+    }
+
+    async function onWaitlistSubmit(event) {
+      event.preventDefault();
+      const email = els.waitlistEmail.value.trim();
+      if (!email) return;
+
+      els.waitlistStatus.textContent = "Submitting...";
+      try {
+        const res = await fetch("/api/waitlist", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email })
+        });
+        if (!res.ok) throw new Error(`Request failed (${res.status})`);
+        els.waitlistStatus.textContent = "You're on the list. We'll reach out soon.";
+        els.waitlistEmail.value = "";
+      } catch (error) {
+        els.waitlistStatus.textContent = `Unable to submit right now: ${error.message}`;
+      }
+    }
+
+    function setupTheme() {
+      const key = "briefcast:theme";
+      const saved = localStorage.getItem(key);
+      if (saved === "dark") {
+        document.documentElement.setAttribute("data-theme", "dark");
+        els.themeToggle.textContent = "Light Mode";
+      }
+      els.themeToggle.addEventListener("click", () => {
+        const current = document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
+        const next = current === "dark" ? "light" : "dark";
+        if (next === "dark") {
+          document.documentElement.setAttribute("data-theme", "dark");
+          els.themeToggle.textContent = "Light Mode";
+        } else {
+          document.documentElement.removeAttribute("data-theme");
+          els.themeToggle.textContent = "Dark Mode";
+        }
+        localStorage.setItem(key, next);
+      });
+    }
+
+    addAirportLookup();
+    createAirportOptions();
+    setupTheme();
+
+    els.briefingForm.addEventListener("submit", onSubmit);
+    els.swapBtn.addEventListener("click", onSwap);
+    els.waitlistForm.addEventListener("submit", onWaitlistSubmit);
+  </script>
+</body>
+</html>
