@@ -16,19 +16,24 @@ function json(res, status, payload, cacheSeconds = 60) {
   res.end(JSON.stringify(payload));
 }
 
+const staleCache = globalThis.__briefcastStaleCache || new Map();
+globalThis.__briefcastStaleCache = staleCache;
+
 function getCached(key) {
   const hit = memoryCache.get(key);
   if (!hit) return null;
   if (Date.now() > hit.expiresAt) {
+    staleCache.set(key, hit.value);
+    memoryCache.delete(key);
     return null;
   }
   return hit.value;
 }
 
 function getStaleCached(key) {
-  const hit = memoryCache.get(key);
-  if (!hit) return null;
-  return hit.value;
+  const fresh = memoryCache.get(key);
+  if (fresh) return fresh.value;
+  return staleCache.get(key) || null;
 }
 
 function setCached(key, value, ttlMs) {
@@ -72,6 +77,7 @@ async function cachedFetchJson(url, options = {}, ttlMs = 60_000) {
     const stale = getStaleCached(key);
     if (stale) {
       console.log('briefcast.upstream.stale_served', { hostname, url: url.slice(0, 120) });
+      stale.__stale = true;
       return stale;
     }
   }
@@ -100,6 +106,7 @@ async function cachedFetchJson(url, options = {}, ttlMs = 60_000) {
       const stale = getStaleCached(key);
       if (stale) {
         console.log('briefcast.upstream.stale_served', { hostname, failCount, url: url.slice(0, 120) });
+        stale.__stale = true;
         return stale;
       }
     }

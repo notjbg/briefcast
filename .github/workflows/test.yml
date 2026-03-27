@@ -9,4 +9,4 @@ jobs:
         with:
           node-version: 20
       - run: npm install
-      - run: node --test 'test/*.test.js'
+      - run: node --test test/*.test.js

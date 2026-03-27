@@ -22,18 +22,23 @@ function parseBody(req) {
 
 async function maybeAddToResend(email) {
   const apiKey = process.env.RESEND_API_KEY;
+  const audienceId = process.env.RESEND_AUDIENCE_ID;
   if (!apiKey) {
     console.warn('briefcast.waitlist.resend_skipped', 'RESEND_API_KEY not set');
     return;
   }
+  if (!audienceId) {
+    console.warn('briefcast.waitlist.resend_skipped', 'RESEND_AUDIENCE_ID not set');
+    return;
+  }
 
-  const response = await fetch('https://api.resend.com/audiences/default/contacts', {
+  const response = await fetch('https://api.resend.com/contacts', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${apiKey}`
     },
-    body: JSON.stringify({ email })
+    body: JSON.stringify({ email, audience_id: audienceId })
   });
 
   if (!response.ok) {

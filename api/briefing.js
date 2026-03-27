@@ -187,6 +187,8 @@ module.exports = async function handler(req, res) {
 
     const [metars, tafs, pirepsRaw, airsigmetsRaw, tfrAlerts] = await Promise.all(promises);
 
+    const isStale = !!(metars?.__stale || tafs?.__stale || airsigmetsRaw?.__stale || tfrAlerts?.__stale);
+
     const departureMetar = byStation(metars, fromCode) || {};
     const destinationMetar = byStation(metars, toCode) || {};
     const departureTaf = byStation(tafs, fromCode) || {};
@@ -265,7 +267,8 @@ module.exports = async function handler(req, res) {
       conditions: {
         departure: depCategory,
         destination: destCategory
-      }
+      },
+      stale: isStale || undefined
     };
 
     setCached(cacheKey, output, BRIEFING_TTL_MS);
