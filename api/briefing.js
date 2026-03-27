@@ -7,6 +7,16 @@ const {
   calculateFlightCategory,
   airportForCode
 } = require('./_utils');
+const { z } = require('zod');
+
+const AiBriefingSchema = z.object({
+  routeSummary: z.string().optional(),
+  departureMetar: z.string().optional(),
+  departureTaf: z.string().optional(),
+  destinationMetar: z.string().optional(),
+  destinationTaf: z.string().optional(),
+  afdSummary: z.string().optional()
+}).passthrough();
 
 const BRIEFING_TTL_MS = 5 * 60_000;
 
@@ -57,10 +67,15 @@ function selectAfdText(raw = '') {
   return normalized.slice(0, 2400);
 }
 
-function plainRouteSummary(from, to, depCategory, destCategory, hazardsCount) {
-  const hazardLine = hazardsCount
-    ? `${hazardsCount} active hazard advisories were returned for this route; review each item before departure.`
-    : 'No active hazard advisories were returned in this pull, but continue monitoring updates.';
+function plainRouteSummary(from, to, depCategory, destCategory, hazardsCount, hazardsFetchOk = true) {
+  let hazardLine;
+  if (!hazardsFetchOk) {
+    hazardLine = 'Hazard data temporarily unavailable. Check aviationweather.gov directly before departure.';
+  } else if (hazardsCount) {
+    hazardLine = `${hazardsCount} active hazard advisories were returned for this route; review each item before departure.`;
+  } else {
+    hazardLine = 'No active hazard advisories were returned in this pull, but continue monitoring updates.';
+  }
   return `From ${from} to ${to}, current endpoint flight categories are ${depCategory} at departure and ${destCategory} at destination. ${hazardLine}`;
 }
 
@@ -97,7 +112,8 @@ async function maybeTranslateWithAnthropic(payload) {
   if (jsonStart === -1 || jsonEnd === -1) return null;
 
   try {
-    return JSON.parse(text.slice(jsonStart, jsonEnd + 1));
+    const parsed = JSON.parse(text.slice(jsonStart, jsonEnd + 1));
+    return AiBriefingSchema.parse(parsed);
   } catch {
     return null;
   }
@@ -105,6 +121,7 @@ async function maybeTranslateWithAnthropic(payload) {
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'GET') return json(res, 405, { error: 'Method not allowed' });
+  const startTime = Date.now();
 
   const fromCode = normalizeAirportCode(req.query.from);
   const toCode = normalizeAirportCode(req.query.to);
@@ -114,9 +131,14 @@ module.exports = async function handler(req, res) {
     return json(res, 400, { error: 'Invalid or missing from/to airport code. Use ICAO or IATA.' }, 10);
   }
 
+  console.log('briefcast.briefing.request', { from: fromCode, to: toCode, departTime });
+
   const cacheKey = `briefing:${fromCode}:${toCode}:${departTime || 'now'}`;
   const cached = getCached(cacheKey);
-  if (cached) return json(res, 200, cached, 180);
+  if (cached) {
+    console.log('briefcast.briefing.cache_hit', { from: fromCode, to: toCode, latencyMs: Date.now() - startTime });
+    return json(res, 200, cached, 180);
+  }
 
   try {
     const airportFrom = airportForCode(fromCode);
@@ -124,9 +146,10 @@ module.exports = async function handler(req, res) {
     const metarUrl = `https://aviationweather.gov/api/data/metar?ids=${encodeURIComponent(`${fromCode},${toCode}`)}&format=json`;
     const tafUrl = `https://aviationweather.gov/api/data/taf?ids=${encodeURIComponent(`${fromCode},${toCode}`)}&format=json`;
 
+    let hazardsFetchOk = true;
     const promises = [
-      cachedFetchJson(metarUrl, { headers: { Accept: 'application/json' } }, 120_000),
-      cachedFetchJson(tafUrl, { headers: { Accept: 'application/json' } }, 120_000)
+      cachedFetchJson(metarUrl, { headers: { Accept: 'application/json' } }, 120_000).catch(() => []),
+      cachedFetchJson(tafUrl, { headers: { Accept: 'application/json' } }, 120_000).catch(() => [])
     ];
 
     if (airportFrom && airportTo) {
@@ -141,8 +164,8 @@ module.exports = async function handler(req, res) {
       promises.push(Promise.resolve([]));
     }
 
-    promises.push(cachedFetchJson('https://aviationweather.gov/api/data/airsigmet?format=json', { headers: { Accept: 'application/json' } }, 90_000).catch(() => []));
-    promises.push(cachedFetchJson('https://api.weather.gov/alerts/active?event=Temporary%20Flight%20Restriction', { headers: { Accept: 'application/geo+json' } }, 120_000).catch(() => ({ features: [] })));
+    promises.push(cachedFetchJson('https://aviationweather.gov/api/data/airsigmet?format=json', { headers: { Accept: 'application/json' } }, 90_000).catch(() => { hazardsFetchOk = false; return []; }));
+    promises.push(cachedFetchJson('https://api.weather.gov/alerts/active?event=Temporary%20Flight%20Restriction', { headers: { Accept: 'application/geo+json' } }, 120_000).catch(() => { hazardsFetchOk = false; return { features: [] }; }));
 
     let afdRaw = '';
     if (airportTo) {
@@ -206,12 +229,13 @@ module.exports = async function handler(req, res) {
     let ai = null;
     try {
       ai = await maybeTranslateWithAnthropic(aiInput);
+      if (ai) console.log('briefcast.briefing.ai_used', { from: fromCode, to: toCode });
     } catch (aiError) {
       console.warn('briefcast.ai_translate_failed', aiError.message);
     }
 
     const output = {
-      routeSummary: ai?.routeSummary || plainRouteSummary(fromCode, toCode, depCategory, destCategory, hazards.length),
+      routeSummary: ai?.routeSummary || plainRouteSummary(fromCode, toCode, depCategory, destCategory, hazards.length, hazardsFetchOk),
       departure: {
         metar: {
           ...(departureMetar || {}),
@@ -245,8 +269,13 @@ module.exports = async function handler(req, res) {
     };
 
     setCached(cacheKey, output, BRIEFING_TTL_MS);
+    console.log('briefcast.briefing.complete', { from: fromCode, to: toCode, aiUsed: !!ai, latencyMs: Date.now() - startTime });
     return json(res, 200, output, 180);
   } catch (error) {
-    return json(res, 500, { error: 'Failed to generate briefing', detail: error.message }, 10);
+    console.error('briefcast.briefing.error', { from: fromCode, to: toCode, error: error.message, latencyMs: Date.now() - startTime });
+    return json(res, 500, { error: 'Failed to generate briefing' }, 10);
   }
 };
+
+module.exports.handler = module.exports;
+module.exports._test = { summarizeHazards, summarizePireps, selectAfdText, plainRouteSummary };
