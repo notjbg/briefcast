@@ -45,6 +45,17 @@
       --shadow: 0 12px 26px rgba(0, 0, 0, 0.28);
     }
 
+    [data-theme="dark"] .badge.vfr { background: #22c55e; }
+    [data-theme="dark"] .badge.mvfr { background: #60a5fa; }
+    [data-theme="dark"] .badge.ifr { background: #f87171; }
+    [data-theme="dark"] .badge.lifr { background: #e879f9; }
+
+    [data-theme="dark"] body {
+      background: radial-gradient(1200px 700px at 110% -10%, #1a2e28 0%, rgba(26, 46, 40, 0) 60%),
+        radial-gradient(1000px 600px at -20% -10%, #1e1a14 0%, rgba(30, 26, 20, 0) 55%),
+        var(--bg);
+    }
+
     * { box-sizing: border-box; }
 
     body {
@@ -103,7 +114,7 @@
       background: var(--card);
       color: var(--ink);
       border-radius: 12px;
-      padding: 10px 14px;
+      padding: 12px 18px;
       cursor: pointer;
       transition: all 0.16s ease;
       font-weight: 600;
@@ -113,7 +124,7 @@
     .btn:focus-visible {
       transform: translateY(-1px);
       box-shadow: var(--shadow);
-      border-color: #b0b0b0;
+      border-color: var(--line);
     }
 
     .btn:focus-visible,
@@ -242,7 +253,7 @@
     }
 
     [data-theme="dark"] pre {
-      background: rgba(255, 255, 255, 0.05);
+      background: rgba(255, 255, 255, 0.08);
     }
 
     .status {
@@ -307,6 +318,85 @@
       border: 0;
     }
 
+    .loading-pulse {
+      height: 4px;
+      background: var(--accent);
+      border-radius: 2px;
+      animation: pulse 1.5s ease-in-out infinite;
+      margin-bottom: 12px;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.3; width: 30%; }
+      50% { opacity: 1; width: 100%; }
+    }
+
+    .combobox-wrap { position: relative; }
+    .combobox-list {
+      position: absolute; top: 100%; left: 0; right: 0; z-index: 100;
+      max-height: 240px; overflow-y: auto;
+      background: var(--card); border: 1px solid var(--line);
+      border-radius: 10px; box-shadow: var(--shadow);
+      margin-top: 4px; display: none;
+    }
+    .combobox-list.open { display: block; }
+    .combobox-option {
+      padding: 10px 12px; cursor: pointer;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      font-size: 0.9rem; display: flex; gap: 8px; align-items: baseline;
+    }
+    .combobox-option:hover, .combobox-option.active {
+      background: var(--accent-soft);
+    }
+    .combobox-option .code { font-weight: 700; min-width: 4ch; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .combobox-option .iata { color: var(--muted); min-width: 3ch; }
+    .combobox-option .name { flex: 1; }
+
+    .stale-banner {
+      background: #fef3c7;
+      border: 1px solid #f59e0b;
+      border-radius: var(--radius);
+      padding: 10px 14px;
+      color: #92400e;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 14px;
+    }
+    [data-theme="dark"] .stale-banner {
+      background: #422006;
+      border-color: #b45309;
+      color: #fbbf24;
+    }
+
+    .quick-look {
+      display: flex;
+      gap: 18px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .quick-look-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      font-size: 0.95rem;
+    }
+
+    .source-label {
+      font-size: 0.72rem;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      color: var(--muted);
+      font-style: italic;
+      margin-top: 4px;
+    }
+
+    .metar-age {
+      font-size: 0.8rem;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
     @media (max-width: 920px) {
       .inputs {
         grid-template-columns: 1fr;
@@ -321,6 +411,12 @@
       .no-print { display: none !important; }
       .card { box-shadow: none; break-inside: avoid; }
       a { color: #000; text-decoration: none; }
+      .footer-links { display: none; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .card { animation: none; }
+      .loading-pulse { animation: none; opacity: 0.6; width: 100%; }
     }
   </style>
   <script type="application/ld+json">
@@ -333,7 +429,7 @@
     "operatingSystem": "Any",
     "offers": {
       "@type": "Offer",
-      "price": "4.99",
+      "price": "0",
       "priceCurrency": "USD"
     }
   }
@@ -362,6 +458,8 @@
     ]
   }
   </script>
+  <script defer src="https://va.vercel-scripts.com/v1/script.js"></script>
+  <script defer src="https://vitals.vercel-insights.com/v1/vitals.js"></script>
 </head>
 <body>
   <main class="container">
@@ -380,12 +478,12 @@
         <div class="inputs">
           <label>
             <span class="sans">From (ICAO or IATA)</span>
-            <input id="fromInput" type="text" name="from" list="airportList" autocomplete="off" required aria-required="true" aria-label="Departure airport" maxlength="5" />
+            <input id="fromInput" type="text" name="from" autocomplete="off" required aria-required="true" aria-label="Departure airport" maxlength="5" />
           </label>
           <button class="btn" id="swapBtn" type="button" aria-label="Swap departure and destination">Swap</button>
           <label>
             <span class="sans">To (ICAO or IATA)</span>
-            <input id="toInput" type="text" name="to" list="airportList" autocomplete="off" required aria-required="true" aria-label="Destination airport" maxlength="5" />
+            <input id="toInput" type="text" name="to" autocomplete="off" required aria-required="true" aria-label="Destination airport" maxlength="5" />
           </label>
           <button class="btn btn-primary" id="briefBtn" type="submit" aria-label="Generate weather briefing">Generate Briefing</button>
         </div>
@@ -395,9 +493,12 @@
         </label>
         <p class="input-hint sans">Type city, airport name, ICAO, or IATA. Example: <code>KORD</code>, <code>LAX</code>, <code>Chicago O'Hare</code>.</p>
       </form>
-      <datalist id="airportList"></datalist>
       <p class="status" id="status" aria-live="polite"></p>
       <p class="print-note">Not for operational flight planning. Always verify with official FAA/NWS sources before flight.</p>
+    </section>
+
+    <section id="results" class="results" aria-live="polite" aria-label="Weather briefing results">
+      <p class="sans" id="emptyState" style="color:var(--muted);text-align:center;padding:20px 0;">Enter departure and destination above to generate your briefing.</p>
     </section>
 
     <section class="card pro no-print" aria-labelledby="pro-title">
@@ -422,15 +523,13 @@
       <p class="meta" id="waitlistStatus" aria-live="polite"></p>
     </section>
 
-    <section id="results" class="results" aria-live="polite" aria-label="Weather briefing results"></section>
-
     <footer class="card sans">
       <strong>Built by Jonah Berg</strong>
       <div class="footer-links">
         <a href="https://theblueboard.co" target="_blank" rel="noopener">The Blue Board</a>
         <a href="https://plaincast.live" target="_blank" rel="noopener">Plaincast</a>
         <a href="https://buymeacoffee.com/notjbg" target="_blank" rel="noopener">Buy me a coffee</a>
-        <a href="https://github.com" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://github.com/notjbg/briefcast" target="_blank" rel="noopener">GitHub</a>
       </div>
       <p class="meta">Disclaimer: Not for operational flight planning. Always verify with official sources.</p>
     </footer>
@@ -496,7 +595,6 @@
       { icao: "KFAT", iata: "FAT", name: "Fresno Yosemite Intl", state: "CA", lat: 36.7762, lon: -119.7181 },
       { icao: "KPSP", iata: "PSP", name: "Palm Springs Intl", state: "CA", lat: 33.8297, lon: -116.5070 },
       { icao: "KSBP", iata: "SBP", name: "San Luis Obispo County", state: "CA", lat: 35.2371, lon: -120.6424 },
-      { icao: "KSBP", iata: "SBP", name: "San Luis Obispo County Regional", state: "CA", lat: 35.2371, lon: -120.6424 },
       { icao: "KMRY", iata: "MRY", name: "Monterey Regional", state: "CA", lat: 36.5870, lon: -121.8430 },
       { icao: "KRNO", iata: "RNO", name: "Reno-Tahoe Intl", state: "NV", lat: 39.4991, lon: -119.7681 },
       { icao: "KGEG", iata: "GEG", name: "Spokane Intl", state: "WA", lat: 47.6199, lon: -117.5338 },
@@ -522,7 +620,6 @@
       { icao: "KLEX", iata: "LEX", name: "Blue Grass", state: "KY", lat: 38.0365, lon: -84.6059 },
       { icao: "KDAY", iata: "DAY", name: "James M. Cox Dayton Intl", state: "OH", lat: 39.9024, lon: -84.2194 },
       { icao: "KCAK", iata: "CAK", name: "Akron-Canton", state: "OH", lat: 40.9161, lon: -81.4422 },
-      { icao: "KCVG", iata: "CVG", name: "Cincinnati/Northern Kentucky Intl", state: "KY", lat: 39.0488, lon: -84.6678 },
       { icao: "KPIT", iata: "PIT", name: "Pittsburgh Intl", state: "PA", lat: 40.4915, lon: -80.2329 },
       { icao: "KABE", iata: "ABE", name: "Lehigh Valley Intl", state: "PA", lat: 40.6521, lon: -75.4408 },
       { icao: "KMDT", iata: "MDT", name: "Harrisburg Intl", state: "PA", lat: 40.1935, lon: -76.7634 },
@@ -535,7 +632,6 @@
       { icao: "KCAE", iata: "CAE", name: "Columbia Metropolitan", state: "SC", lat: 33.9388, lon: -81.1195 },
       { icao: "KSAV", iata: "SAV", name: "Savannah/Hilton Head Intl", state: "GA", lat: 32.1276, lon: -81.2021 },
       { icao: "KAGS", iata: "AGS", name: "Augusta Regional", state: "GA", lat: 33.3699, lon: -81.9645 },
-      { icao: "KCHS", iata: "CHS", name: "Charleston Intl", state: "SC", lat: 32.8986, lon: -80.0405 },
       { icao: "KBHM", iata: "BHM", name: "Birmingham-Shuttlesworth Intl", state: "AL", lat: 33.5629, lon: -86.7535 },
       { icao: "KMOB", iata: "MOB", name: "Mobile Regional", state: "AL", lat: 30.6914, lon: -88.2428 },
       { icao: "KHSV", iata: "HSV", name: "Huntsville Intl", state: "AL", lat: 34.6404, lon: -86.7731 },
@@ -617,8 +713,6 @@
       { icao: "KHTS", iata: "HTS", name: "Tri-State", state: "WV", lat: 38.3667, lon: -82.5579 },
       { icao: "KTRI", iata: "TRI", name: "Tri-Cities Regional", state: "TN", lat: 36.4752, lon: -82.4074 },
       { icao: "KGSO", iata: "GSO", name: "Piedmont Triad Intl", state: "NC", lat: 36.0978, lon: -79.9373 },
-      { icao: "KCLT", iata: "CLT", name: "Charlotte Douglas Intl", state: "NC", lat: 35.2140, lon: -80.9431 },
-      { icao: "KFSD", iata: "FSD", name: "Sioux Falls Regional", state: "SD", lat: 43.5814, lon: -96.7419 },
       { icao: "KGRB", iata: "GRB", name: "Green Bay Austin Straubel Intl", state: "WI", lat: 44.4851, lon: -88.1296 },
       { icao: "KATW", iata: "ATW", name: "Appleton Intl", state: "WI", lat: 44.2581, lon: -88.5191 },
       { icao: "KCWA", iata: "CWA", name: "Central Wisconsin", state: "WI", lat: 44.7776, lon: -89.6668 },
@@ -627,7 +721,6 @@
       { icao: "KRST", iata: "RST", name: "Rochester Intl", state: "MN", lat: 43.9083, lon: -92.5000 },
       { icao: "KATY", iata: "ATY", name: "Watertown Regional", state: "SD", lat: 44.9140, lon: -97.1547 },
       { icao: "KMQT", iata: "MQT", name: "Sawyer Intl", state: "MI", lat: 46.3536, lon: -87.3954 },
-      { icao: "KPWM", iata: "PWM", name: "Portland Intl Jetport", state: "ME", lat: 43.6462, lon: -70.3093 },
       { icao: "KBGR", iata: "BGR", name: "Bangor Intl", state: "ME", lat: 44.8074, lon: -68.8281 },
       { icao: "KBHB", iata: "BHB", name: "Hancock County-Bar Harbor", state: "ME", lat: 44.4500, lon: -68.3617 },
       { icao: "KFAI", iata: "FAI", name: "Fairbanks Intl", state: "AK", lat: 64.8151, lon: -147.8560 },
@@ -653,15 +746,13 @@
       { icao: "KPHF", iata: "PHF", name: "Newport News/Williamsburg Intl", state: "VA", lat: 37.1319, lon: -76.4929 },
       { icao: "KLYH", iata: "LYH", name: "Lynchburg Regional", state: "VA", lat: 37.3267, lon: -79.2004 },
       { icao: "KCHO", iata: "CHO", name: "Charlottesville-Albemarle", state: "VA", lat: 38.1386, lon: -78.4529 },
-      { icao: "KFAT", iata: "FAT", name: "Fresno Yosemite Intl", state: "CA", lat: 36.7762, lon: -119.7181 },
       { icao: "KRDD", iata: "RDD", name: "Redding Regional", state: "CA", lat: 40.5089, lon: -122.2934 },
       { icao: "KACV", iata: "ACV", name: "California Redwood Coast-Humboldt", state: "CA", lat: 40.9781, lon: -124.1086 },
       { icao: "KMFR", iata: "MFR", name: "Rogue Valley Intl-Medford", state: "OR", lat: 42.3742, lon: -122.8735 },
       { icao: "KEUG", iata: "EUG", name: "Mahlon Sweet Field", state: "OR", lat: 44.1246, lon: -123.2110 },
       { icao: "KPSC", iata: "PSC", name: "Tri-Cities", state: "WA", lat: 46.2647, lon: -119.1190 },
       { icao: "KYKM", iata: "YKM", name: "Yakima Air Terminal", state: "WA", lat: 46.5682, lon: -120.5440 },
-      { icao: "KPUW", iata: "PUW", name: "Pullman-Moscow Regional", state: "WA", lat: 46.7439, lon: -117.1096 },
-      { icao: "KCOD", iata: "COD", name: "Yellowstone Regional", state: "WY", lat: 44.5202, lon: -109.0238 }
+      { icao: "KPUW", iata: "PUW", name: "Pullman-Moscow Regional", state: "WA", lat: 46.7439, lon: -117.1096 }
     ];
 
     const AIRPORTS = AIRPORTS_RAW
@@ -686,14 +777,14 @@
     const state = {
       airportIndex: new Map(),
       codeIndex: new Map(),
-      busy: false
+      busy: false,
+      loadingInterval: null
     };
 
     const els = {
       fromInput: document.getElementById("fromInput"),
       toInput: document.getElementById("toInput"),
       departTimeInput: document.getElementById("departTimeInput"),
-      airportList: document.getElementById("airportList"),
       briefingForm: document.getElementById("briefingForm"),
       swapBtn: document.getElementById("swapBtn"),
       briefBtn: document.getElementById("briefBtn"),
@@ -716,15 +807,82 @@
       });
     }
 
-    function createAirportOptions() {
-      const fragment = document.createDocumentFragment();
-      AIRPORTS.forEach((airport) => {
-        const opt = document.createElement("option");
-        opt.value = airport.icao;
-        opt.label = `${airport.iata || "---"} · ${airport.name} (${airport.state})`;
-        fragment.appendChild(opt);
+    function createCombobox(inputEl) {
+      const wrap = document.createElement("div");
+      wrap.className = "combobox-wrap";
+      inputEl.parentNode.insertBefore(wrap, inputEl);
+      wrap.appendChild(inputEl);
+
+      const list = document.createElement("div");
+      list.className = "combobox-list";
+      list.setAttribute("role", "listbox");
+      wrap.appendChild(list);
+
+      let activeIdx = -1;
+      let filtered = [];
+
+      function render(items) {
+        filtered = items.slice(0, 30);
+        list.innerHTML = filtered.map((a, i) =>
+          `<div class="combobox-option${i === activeIdx ? ' active' : ''}" role="option" data-icao="${a.icao}">
+            <span class="code">${a.icao}</span>
+            <span class="iata">${a.iata || '---'}</span>
+            <span class="name">${escapeHtml(a.name)} (${a.state})</span>
+          </div>`
+        ).join("");
+        list.classList.toggle("open", filtered.length > 0);
+      }
+
+      function search(query) {
+        const q = query.toUpperCase();
+        if (!q) { list.classList.remove("open"); return; }
+        const matches = AIRPORTS.filter(a => {
+          const target = `${a.icao} ${a.iata || ""} ${a.name} ${a.state}`.toUpperCase();
+          return target.includes(q);
+        });
+        activeIdx = -1;
+        render(matches);
+      }
+
+      function select(airport) {
+        inputEl.value = airport.icao;
+        list.classList.remove("open");
+        activeIdx = -1;
+      }
+
+      inputEl.addEventListener("input", () => search(inputEl.value));
+      inputEl.addEventListener("focus", () => { if (inputEl.value) search(inputEl.value); });
+
+      list.addEventListener("click", (e) => {
+        const opt = e.target.closest(".combobox-option");
+        if (opt) {
+          const icao = opt.dataset.icao;
+          const airport = state.airportIndex.get(icao);
+          if (airport) select(airport);
+        }
       });
-      els.airportList.appendChild(fragment);
+
+      inputEl.addEventListener("keydown", (e) => {
+        if (!list.classList.contains("open")) return;
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          activeIdx = Math.min(activeIdx + 1, filtered.length - 1);
+          render(filtered);
+        } else if (e.key === "ArrowUp") {
+          e.preventDefault();
+          activeIdx = Math.max(activeIdx - 1, 0);
+          render(filtered);
+        } else if (e.key === "Enter" && activeIdx >= 0) {
+          e.preventDefault();
+          select(filtered[activeIdx]);
+        } else if (e.key === "Escape") {
+          list.classList.remove("open");
+        }
+      });
+
+      document.addEventListener("click", (e) => {
+        if (!wrap.contains(e.target)) list.classList.remove("open");
+      });
     }
 
     function resolveAirport(input) {
@@ -764,6 +922,36 @@
       return `<span class="badge ${css}" aria-label="Flight category ${escapeHtml(c)}">${escapeHtml(c)}</span>`;
     }
 
+    function formatRelativeTime(isoString) {
+      if (!isoString) return null;
+      try {
+        const obsDate = new Date(isoString);
+        if (isNaN(obsDate.getTime())) return null;
+        const diffMs = Date.now() - obsDate.getTime();
+        const diffMin = Math.round(diffMs / 60000);
+        if (diffMin < 1) return "just now";
+        if (diffMin < 60) return `${diffMin} min ago`;
+        const diffHr = Math.round(diffMin / 60);
+        if (diffHr < 24) return `${diffHr} hr ago`;
+        return obsDate.toISOString().replace(/T/, " ").replace(/\.\d+Z/, "Z");
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function formatZuluTime(isoString) {
+      if (!isoString) return null;
+      try {
+        const d = new Date(isoString);
+        if (isNaN(d.getTime())) return null;
+        const hh = String(d.getUTCHours()).padStart(2, "0");
+        const mm = String(d.getUTCMinutes()).padStart(2, "0");
+        return `${hh}${mm}Z`;
+      } catch (e) {
+        return null;
+      }
+    }
+
     function parseMetar(raw) {
       const fallback = {
         raw,
@@ -778,7 +966,28 @@
 
       const tokens = raw.trim().split(/\s+/);
       const windMatch = tokens.find((t) => /^(?:VRB\d{2,3}KT|\d{3}\d{2,3}(?:G\d{2,3})?KT)$/.test(t));
-      const visMatch = tokens.find((t) => /^(\d+|\d+\/\d+|P6)SM$/.test(t));
+
+      // Visibility parsing with lookahead for mixed-number patterns like "1 1/2SM"
+      let visMatch = null;
+      for (let i = 0; i < tokens.length; i++) {
+        const t = tokens[i];
+        // Fractional with SM suffix (e.g., "1/2SM", "3/4SM")
+        if (/^\d+\/\d+SM$/.test(t)) {
+          // Check if previous token is a bare integer (e.g., "1" before "1/2SM")
+          if (i > 0 && /^\d+$/.test(tokens[i - 1])) {
+            visMatch = tokens[i - 1] + " " + t;
+          } else {
+            visMatch = t;
+          }
+          break;
+        }
+        // Whole number SM (e.g., "10SM"), P6SM
+        if (/^(\d+|P6)SM$/.test(t)) {
+          visMatch = t;
+          break;
+        }
+      }
+
       const altMatch = tokens.find((t) => /^A\d{4}$/.test(t));
       const tempDewMatch = tokens.find((t) => /^M?\d{2}\/M?\d{2}$/.test(t));
       const cloudTokens = tokens.filter((t) => /^(FEW|SCT|BKN|OVC|VV)\d{3}/.test(t));
@@ -799,7 +1008,11 @@
 
       let visibility = "Visibility unavailable";
       if (visMatch) {
-        visibility = visMatch === "P6SM" ? "Visibility greater than 6 statute miles" : `Visibility ${visMatch.replace("SM", " statute miles")}`;
+        if (visMatch === "P6SM") {
+          visibility = "Visibility greater than 6 statute miles";
+        } else {
+          visibility = `Visibility ${visMatch.replace("SM", " statute miles")}`;
+        }
       }
 
       const cloudMap = { FEW: "few", SCT: "scattered", BKN: "broken", OVC: "overcast", VV: "vertical visibility" };
@@ -885,11 +1098,31 @@
         ? tafDecoded.periods.slice(0, 4).map((p) => `<li><strong>${escapeHtml(p.label)}:</strong> ${withGlossaryTerms(p.decoded.weather)}; ${escapeHtml(p.decoded.visibility)}; ${escapeHtml(p.decoded.clouds)}.</li>`).join("")
         : "<li>No TAF data available.</li>";
 
+      // METAR freshness timestamp (6.5e)
+      const obsTime = metar?.obsTime;
+      const relTime = formatRelativeTime(obsTime);
+      const zuluTime = formatZuluTime(obsTime);
+      let metarAgeHtml = "";
+      if (relTime && zuluTime) {
+        metarAgeHtml = `<p class="metar-age">Observed: ${escapeHtml(zuluTime)} (${escapeHtml(relTime)})</p>`;
+      } else if (relTime) {
+        metarAgeHtml = `<p class="metar-age">Observed: ${escapeHtml(relTime)}</p>`;
+      } else if (zuluTime) {
+        metarAgeHtml = `<p class="metar-age">Observed: ${escapeHtml(zuluTime)}</p>`;
+      }
+
+      // AI vs parser distinction (6.5g)
+      const sourceLabel = metar?.translation
+        ? `<p class="source-label">AI translated</p>`
+        : `<p class="source-label">Decoded from raw data</p>`;
+
       return `
         <article class="card" aria-label="${escapeHtml(title)} weather">
           <p class="section-kicker">${escapeHtml(title)}</p>
           <h2>${escapeHtml(airport?.name || "Unknown Airport")} (${escapeHtml(airport?.icao || "----")})</h2>
+          ${metarAgeHtml}
           <p>${withGlossaryTerms(metar?.translation || `Current ${"METAR"}: ${metarDecoded.wind}. ${metarDecoded.visibility}. ${metarDecoded.clouds}. ${metarDecoded.tempDew}. ${metarDecoded.altimeter}. Weather: ${metarDecoded.weather}.`)}</p>
+          ${sourceLabel}
           <details>
             <summary class="sans">Raw METAR</summary>
             <pre class="mono">${escapeHtml(metarDecoded.raw || "No METAR available")}</pre>
@@ -923,7 +1156,36 @@
       const depCategory = (data.conditions?.departure || "UNKNOWN").toUpperCase();
       const destCategory = (data.conditions?.destination || "UNKNOWN").toUpperCase();
 
+      // Quick Look card (6.5c)
+      const depMetarObs = data.departure?.metar?.obsTime;
+      const destMetarObs = data.destination?.metar?.obsTime;
+      const depAge = formatRelativeTime(depMetarObs);
+      const destAge = formatRelativeTime(destMetarObs);
+      let quickLookAgeHtml = "";
+      if (depAge) quickLookAgeHtml += `<span class="quick-look-item">${escapeHtml(fromCode)} obs: ${escapeHtml(depAge)}</span>`;
+      if (destAge) quickLookAgeHtml += `<span class="quick-look-item">${escapeHtml(toCode)} obs: ${escapeHtml(destAge)}</span>`;
+
+      const hazardCount = hazards.length;
+      const hazardSummary = hazardCount > 0 ? `${hazardCount} active hazard${hazardCount > 1 ? "s" : ""}` : "No active hazards";
+
+      // Stale data indicator (6.5d)
+      let staleHtml = "";
+      if (data.stale || data.isStale || data.staleData) {
+        staleHtml = `<div class="stale-banner">Warning: Some weather data may be stale. Verify with official sources before flight.</div>`;
+      }
+
       els.results.innerHTML = `
+        ${staleHtml}
+        <section class="card">
+          <p class="section-kicker">Quick Look</p>
+          <h2>${escapeHtml(fromCode)} / ${escapeHtml(toCode)}</h2>
+          <div class="quick-look">
+            <span class="quick-look-item"><strong>${escapeHtml(fromCode)}:</strong> ${categoryBadge(depCategory)}</span>
+            <span class="quick-look-item"><strong>${escapeHtml(toCode)}:</strong> ${categoryBadge(destCategory)}</span>
+            <span class="quick-look-item">${escapeHtml(hazardSummary)}</span>
+            ${quickLookAgeHtml}
+          </div>
+        </section>
         <section class="card">
           <p class="section-kicker">Route Summary</p>
           <h2>${escapeHtml(fromCode)} to ${escapeHtml(toCode)}</h2>
@@ -977,6 +1239,13 @@
       els.status.className = isError ? "status error" : "status";
     }
 
+    function clearLoadingInterval() {
+      if (state.loadingInterval) {
+        clearInterval(state.loadingInterval);
+        state.loadingInterval = null;
+      }
+    }
+
     async function onSubmit(event) {
       event.preventDefault();
       if (state.busy) return;
@@ -997,13 +1266,40 @@
       state.busy = true;
       els.briefBtn.disabled = true;
       setStatus(`Loading briefing for ${fromCode} → ${toCode} ...`);
-      els.results.innerHTML = `<section class="card"><p class="sans">Loading weather data and generating summary...</p></section>`;
+
+      // Timer-based loading UX (6.5b)
+      const loadingStages = [
+        { time: 0, text: "Fetching current conditions..." },
+        { time: 2, text: "Pulling forecasts and hazards..." },
+        { time: 5, text: "Generating plain-English summary..." },
+        { time: 15, text: "Still working... weather sources can be slow." }
+      ];
+      let stageIdx = 0;
+      let elapsed = 0;
+
+      els.results.innerHTML = `<section class="card"><div class="loading-pulse"></div><p class="sans" id="loadingText">${loadingStages[0].text}</p></section>`;
+
+      clearLoadingInterval();
+      state.loadingInterval = setInterval(() => {
+        elapsed++;
+        if (stageIdx + 1 < loadingStages.length && elapsed >= loadingStages[stageIdx + 1].time) {
+          stageIdx++;
+          const loadingTextEl = document.getElementById("loadingText");
+          if (loadingTextEl) {
+            loadingTextEl.textContent = loadingStages[stageIdx].text;
+          }
+        }
+      }, 1000);
 
       try {
         const data = await fetchBriefing(fromCode, toCode, departTime);
+        clearLoadingInterval();
         renderBriefing(data, fromCode, toCode);
         setStatus(`Briefing ready for ${fromCode} to ${toCode}.`);
+        // Auto-scroll to results (6.5f)
+        els.results.scrollIntoView({ behavior: 'smooth', block: 'start' });
       } catch (error) {
+        clearLoadingInterval();
         els.results.innerHTML = "";
         setStatus(`Unable to load briefing: ${error.message}`, true);
       } finally {
@@ -1061,7 +1357,8 @@
     }
 
     addAirportLookup();
-    createAirportOptions();
+    createCombobox(els.fromInput);
+    createCombobox(els.toInput);
     setupTheme();
 
     els.briefingForm.addEventListener("submit", onSubmit);

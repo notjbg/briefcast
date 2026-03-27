@@ -1,5 +1,3 @@
-const fs = require('fs/promises');
-const path = require('path');
 const { json } = require('./_utils');
 
 function parseBody(req) {
@@ -22,33 +20,54 @@ function parseBody(req) {
   });
 }
 
+async function maybeAddToResend(email) {
+  const apiKey = process.env.RESEND_API_KEY;
+  const audienceId = process.env.RESEND_AUDIENCE_ID;
+  if (!apiKey) {
+    console.warn('briefcast.waitlist.resend_skipped', 'RESEND_API_KEY not set');
+    return;
+  }
+  if (!audienceId) {
+    console.warn('briefcast.waitlist.resend_skipped', 'RESEND_AUDIENCE_ID not set');
+    return;
+  }
+
+  const response = await fetch('https://api.resend.com/contacts', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({ email, audience_id: audienceId })
+  });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => '');
+    throw new Error(`Resend ${response.status}: ${body.slice(0, 120)}`);
+  }
+}
+
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return json(res, 405, { error: 'Method not allowed' });
 
   try {
     const { email } = await parseBody(req);
     const cleaned = String(email || '').trim().toLowerCase();
+    if (cleaned.length > 254) return json(res, 400, { error: 'Invalid email address' }, 5);
     const valid = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(cleaned);
     if (!valid) return json(res, 400, { error: 'Invalid email address' }, 5);
 
-    const event = {
-      email: cleaned,
-      source: 'briefcast-waitlist',
-      createdAt: new Date().toISOString(),
-      ip: req.headers['x-forwarded-for'] || req.socket.remoteAddress || null
-    };
-
-    console.log('briefcast.waitlist', event);
+    console.log('briefcast.waitlist', { email: cleaned, source: 'briefcast-waitlist', createdAt: new Date().toISOString() });
 
     try {
-      const file = path.join('/tmp', 'briefcast-waitlist.jsonl');
-      await fs.appendFile(file, `${JSON.stringify(event)}\n`, 'utf8');
-    } catch (fileErr) {
-      console.warn('briefcast.waitlist.file_write_failed', fileErr.message);
+      await maybeAddToResend(cleaned);
+    } catch (resendErr) {
+      console.warn('briefcast.waitlist.resend_failed', resendErr.message);
     }
 
     return json(res, 200, { ok: true });
   } catch (error) {
-    return json(res, 400, { error: error.message }, 5);
+    console.error('briefcast.waitlist.error', error.message);
+    return json(res, 400, { error: 'Invalid request' }, 5);
   }
 };
