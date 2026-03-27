@@ -5,10 +5,15 @@
   "description": "BriefCast pre-flight weather briefings in plain English",
   "scripts": {
     "dev": "vercel dev",
-    "start": "vercel dev"
+    "start": "vercel dev",
+    "test": "node --test 'test/*.test.js'"
   },
   "engines": {
     "node": ">=20"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "resend": "^6.9.4",
+    "zod": "^4.3.6"
+  }
 }
