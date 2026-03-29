@@ -1,161 +1,212 @@
-const { describe, it } = require('node:test');
-const assert = require('node:assert/strict');
+const { describe, it, expect } = require('bun:test');
 const {
   normalizeAirportCode,
   calculateFlightCategory,
-  parseMetarFields
+  parseMetarFields,
+  getCached,
+  setCached,
+  checkRateLimit
 } = require('../api/_utils');
 
 describe('normalizeAirportCode', () => {
   it('resolves valid ICAO codes', () => {
-    assert.equal(normalizeAirportCode('KORD'), 'KORD');
-    assert.equal(normalizeAirportCode('KLAX'), 'KLAX');
-    assert.equal(normalizeAirportCode('kord'), 'KORD');
+    expect(normalizeAirportCode('KORD')).toBe('KORD');
+    expect(normalizeAirportCode('KLAX')).toBe('KLAX');
+    expect(normalizeAirportCode('kord')).toBe('KORD');
   });
 
   it('resolves IATA to ICAO', () => {
-    assert.equal(normalizeAirportCode('ORD'), 'KORD');
-    assert.equal(normalizeAirportCode('LAX'), 'KLAX');
-    assert.equal(normalizeAirportCode('lax'), 'KLAX');
+    expect(normalizeAirportCode('ORD')).toBe('KORD');
+    expect(normalizeAirportCode('LAX')).toBe('KLAX');
+    expect(normalizeAirportCode('lax')).toBe('KLAX');
+  });
+
+  it('accepts any valid 4-letter ICAO code', () => {
+    expect(normalizeAirportCode('KBED')).toBe('KBED');
+    expect(normalizeAirportCode('ZZZZ')).toBe('ZZZZ');
+    expect(normalizeAirportCode('kbed')).toBe('KBED');
   });
 
   it('returns null for invalid codes', () => {
-    assert.equal(normalizeAirportCode('ZZZZ'), null);
-    assert.equal(normalizeAirportCode('XX'), null);
-    assert.equal(normalizeAirportCode(''), null);
-    assert.equal(normalizeAirportCode(null), null);
-    assert.equal(normalizeAirportCode(undefined), null);
+    expect(normalizeAirportCode('XX')).toBeNull();
+    expect(normalizeAirportCode('')).toBeNull();
+    expect(normalizeAirportCode(null)).toBeNull();
+    expect(normalizeAirportCode(undefined)).toBeNull();
+    expect(normalizeAirportCode('12345')).toBeNull();
+    expect(normalizeAirportCode('AB')).toBeNull();
   });
 });
 
 describe('parseMetarFields', () => {
   it('parses standard visibility', () => {
     const { visibilitySm } = parseMetarFields('KORD 261951Z 33012KT 10SM FEW250 M01/M12 A3032');
-    assert.equal(visibilitySm, 10);
+    expect(visibilitySm).toBe(10);
   });
 
   it('parses P6SM as 6', () => {
     const { visibilitySm } = parseMetarFields('KLAX 261953Z 25010KT P6SM SKC 16/08 A2998');
-    assert.equal(visibilitySm, 6);
+    expect(visibilitySm).toBe(6);
   });
 
   it('parses fractional visibility (1/2SM)', () => {
     const { visibilitySm } = parseMetarFields('KORD 261951Z 33012KT 1/2SM OVC002 M01/M12 A3032');
-    assert.equal(visibilitySm, 0.5);
+    expect(visibilitySm).toBe(0.5);
   });
 
   it('parses mixed-number visibility (1 1/2SM)', () => {
     const { visibilitySm } = parseMetarFields('KORD 261951Z 33012KT 1 1/2SM BKN020 M01/M12 A3032');
-    assert.equal(visibilitySm, 1.5);
+    expect(visibilitySm).toBe(1.5);
   });
 
   it('parses mixed-number visibility (2 1/4SM)', () => {
     const { visibilitySm } = parseMetarFields('KORD 261951Z 33012KT 2 1/4SM OVC005 M01/M12 A3032');
-    assert.equal(visibilitySm, 2.25);
+    expect(visibilitySm).toBe(2.25);
   });
 
   it('returns null for missing visibility', () => {
     const { visibilitySm } = parseMetarFields('KORD 261951Z 33012KT BKN020');
-    assert.equal(visibilitySm, null);
+    expect(visibilitySm).toBeNull();
   });
 
   it('returns null for empty input', () => {
     const result = parseMetarFields('');
-    assert.deepEqual(result, { ceilingFt: null, visibilitySm: null });
+    expect(result).toEqual({ ceilingFt: null, visibilitySm: null });
   });
 
   it('returns null for null input', () => {
     const result = parseMetarFields(null);
-    assert.deepEqual(result, { ceilingFt: null, visibilitySm: null });
+    expect(result).toEqual({ ceilingFt: null, visibilitySm: null });
   });
 
   it('parses ceiling from BKN layer', () => {
     const { ceilingFt } = parseMetarFields('KORD 261951Z 33012KT 10SM BKN020 M01/M12 A3032');
-    assert.equal(ceilingFt, 2000);
+    expect(ceilingFt).toBe(2000);
   });
 
   it('parses ceiling from OVC layer', () => {
     const { ceilingFt } = parseMetarFields('KORD 261951Z 33012KT 10SM OVC005 M01/M12 A3032');
-    assert.equal(ceilingFt, 500);
+    expect(ceilingFt).toBe(500);
   });
 
   it('uses lowest ceiling when multiple layers', () => {
     const { ceilingFt } = parseMetarFields('KORD 261951Z 33012KT 10SM BKN020 OVC040 M01/M12 A3032');
-    assert.equal(ceilingFt, 2000);
+    expect(ceilingFt).toBe(2000);
   });
 
   it('ignores FEW and SCT for ceiling', () => {
     const { ceilingFt } = parseMetarFields('KORD 261951Z 33012KT 10SM FEW010 SCT020 M01/M12 A3032');
-    assert.equal(ceilingFt, null);
+    expect(ceilingFt).toBeNull();
   });
 });
 
 describe('calculateFlightCategory', () => {
   it('returns VFR for clear skies and good visibility', () => {
-    assert.equal(calculateFlightCategory('KLAX 261953Z 25010KT P6SM SKC 16/08 A2998'), 'VFR');
+    expect(calculateFlightCategory('KLAX 261953Z 25010KT P6SM SKC 16/08 A2998')).toBe('VFR');
   });
 
   it('returns UNKNOWN for unparseable METAR', () => {
-    assert.equal(calculateFlightCategory(''), 'UNKNOWN');
-    assert.equal(calculateFlightCategory('garbage'), 'UNKNOWN');
+    expect(calculateFlightCategory('')).toBe('UNKNOWN');
+    expect(calculateFlightCategory('garbage')).toBe('UNKNOWN');
   });
 
   // Ceiling boundary tests
   it('returns LIFR for ceiling 499ft', () => {
-    assert.equal(calculateFlightCategory('KORD 10SM BKN004'), 'LIFR'); // 400ft
+    expect(calculateFlightCategory('KORD 10SM BKN004')).toBe('LIFR'); // 400ft
   });
 
   it('returns IFR for ceiling exactly 500ft', () => {
-    assert.equal(calculateFlightCategory('KORD 10SM BKN005'), 'IFR'); // 500ft
+    expect(calculateFlightCategory('KORD 10SM BKN005')).toBe('IFR'); // 500ft
   });
 
   it('returns IFR for ceiling 999ft', () => {
-    assert.equal(calculateFlightCategory('KORD 10SM OVC009'), 'IFR'); // 900ft
+    expect(calculateFlightCategory('KORD 10SM OVC009')).toBe('IFR'); // 900ft
   });
 
   it('returns MVFR for ceiling exactly 1000ft', () => {
-    assert.equal(calculateFlightCategory('KORD 10SM OVC010'), 'MVFR'); // 1000ft
+    expect(calculateFlightCategory('KORD 10SM OVC010')).toBe('MVFR'); // 1000ft
   });
 
   it('returns MVFR for ceiling 3000ft', () => {
-    assert.equal(calculateFlightCategory('KORD 10SM BKN030'), 'MVFR'); // 3000ft
+    expect(calculateFlightCategory('KORD 10SM BKN030')).toBe('MVFR'); // 3000ft
   });
 
   it('returns VFR for ceiling 3100ft', () => {
-    assert.equal(calculateFlightCategory('KORD 10SM BKN031'), 'VFR'); // 3100ft
+    expect(calculateFlightCategory('KORD 10SM BKN031')).toBe('VFR'); // 3100ft
   });
 
   // Visibility boundary tests
   it('returns LIFR for visibility < 1SM', () => {
-    assert.equal(calculateFlightCategory('KORD 1/2SM SKC'), 'LIFR');
+    expect(calculateFlightCategory('KORD 1/2SM SKC')).toBe('LIFR');
   });
 
   it('returns IFR for visibility exactly 1SM', () => {
-    assert.equal(calculateFlightCategory('KORD 1SM SKC'), 'IFR');
+    expect(calculateFlightCategory('KORD 1SM SKC')).toBe('IFR');
   });
 
   it('returns IFR for visibility 2SM', () => {
-    assert.equal(calculateFlightCategory('KORD 2SM SKC'), 'IFR');
+    expect(calculateFlightCategory('KORD 2SM SKC')).toBe('IFR');
   });
 
   it('returns MVFR for visibility 3SM', () => {
-    assert.equal(calculateFlightCategory('KORD 3SM SKC'), 'MVFR');
+    expect(calculateFlightCategory('KORD 3SM SKC')).toBe('MVFR');
   });
 
   it('returns MVFR for visibility 5SM', () => {
-    assert.equal(calculateFlightCategory('KORD 5SM SKC'), 'MVFR');
+    expect(calculateFlightCategory('KORD 5SM SKC')).toBe('MVFR');
   });
 
   it('returns VFR for visibility > 5SM', () => {
-    assert.equal(calculateFlightCategory('KORD 10SM SKC'), 'VFR');
+    expect(calculateFlightCategory('KORD 10SM SKC')).toBe('VFR');
   });
 
   it('returns VFR for P6SM', () => {
-    assert.equal(calculateFlightCategory('KORD P6SM SKC'), 'VFR');
+    expect(calculateFlightCategory('KORD P6SM SKC')).toBe('VFR');
   });
 
   // Mixed-number visibility (1.5 SM < 3 SM = IFR)
   it('handles 1 1/2SM as IFR', () => {
-    assert.equal(calculateFlightCategory('KORD 1 1/2SM SKC'), 'IFR');
+    expect(calculateFlightCategory('KORD 1 1/2SM SKC')).toBe('IFR');
+  });
+});
+
+describe('checkRateLimit', () => {
+  it('allows requests within the limit', () => {
+    const ip = 'test-allow-' + Date.now();
+    expect(checkRateLimit(ip, 3, 60_000)).toBe(true);
+    expect(checkRateLimit(ip, 3, 60_000)).toBe(true);
+    expect(checkRateLimit(ip, 3, 60_000)).toBe(true);
+  });
+
+  it('blocks requests over the limit', () => {
+    const ip = 'test-block-' + Date.now();
+    checkRateLimit(ip, 2, 60_000);
+    checkRateLimit(ip, 2, 60_000);
+    expect(checkRateLimit(ip, 2, 60_000)).toBe(false);
+  });
+
+  it('resets after window expires', async () => {
+    const ip = 'test-reset-' + Date.now();
+    checkRateLimit(ip, 1, 10);
+    await new Promise(r => setTimeout(r, 15));
+    expect(checkRateLimit(ip, 1, 10)).toBe(true);
+  });
+});
+
+describe('cache', () => {
+  it('returns cached values within TTL', () => {
+    setCached('test-key-hit', { data: 42 }, 60_000);
+    expect(getCached('test-key-hit')).toEqual({ data: 42 });
+  });
+
+  it('returns null for expired entries', () => {
+    setCached('test-key-expired', { data: 1 }, 1);
+    // Force expiry by waiting a tick
+    const start = Date.now();
+    while (Date.now() - start < 5) {} // busy wait 5ms
+    expect(getCached('test-key-expired')).toBeNull();
+  });
+
+  it('returns null for missing keys', () => {
+    expect(getCached('test-key-nonexistent-' + Date.now())).toBeNull();
   });
 });

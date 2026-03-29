@@ -6,10 +6,7 @@
   "scripts": {
     "dev": "vercel dev",
     "start": "vercel dev",
-    "test": "node --test 'test/*.test.js'"
-  },
-  "engines": {
-    "node": ">=20"
+    "test": "bun test"
   },
   "license": "MIT",
   "dependencies": {
