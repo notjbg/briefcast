@@ -187,6 +187,25 @@ function airportForCode(icao) {
   return airportByIcao.get(icao) || null;
 }
 
+function normalizeTimestamp(value) {
+  if (value === null || value === undefined || value === '') return null;
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const numeric = Number(trimmed);
+    if (Number.isFinite(numeric)) return normalizeTimestamp(numeric);
+    const parsed = new Date(trimmed);
+    return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+  }
+
+  if (typeof value !== 'number' || !Number.isFinite(value)) return null;
+
+  const timestampMs = value < 1e12 ? value * 1000 : value;
+  const parsed = new Date(timestampMs);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+}
+
 const rateLimitMap = globalThis.__briefcastRateLimit || new Map();
 globalThis.__briefcastRateLimit = rateLimitMap;
 
@@ -217,6 +236,7 @@ module.exports = {
   normalizeAirportCode,
   parseMetarFields,
   calculateFlightCategory,
+  normalizeTimestamp,
   airportForCode,
   checkRateLimit
 };

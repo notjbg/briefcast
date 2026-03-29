@@ -5,6 +5,7 @@ const {
   cachedFetchJson,
   normalizeAirportCode,
   calculateFlightCategory,
+  normalizeTimestamp,
   airportForCode,
   checkRateLimit
 } = require('./_utils');
@@ -78,6 +79,15 @@ function plainRouteSummary(from, to, depCategory, destCategory, hazardsCount, ha
     hazardLine = 'No active hazard advisories were returned in this pull, but continue monitoring updates.';
   }
   return `From ${from} to ${to}, current endpoint flight categories are ${depCategory} at departure and ${destCategory} at destination. ${hazardLine}`;
+}
+
+function normalizeMetarTimestamps(metar = {}) {
+  return {
+    ...metar,
+    obsTime: normalizeTimestamp(metar.obsTime) || metar.obsTime || null,
+    receiptTime: normalizeTimestamp(metar.receiptTime) || metar.receiptTime || null,
+    reportTime: normalizeTimestamp(metar.reportTime) || metar.reportTime || null
+  };
 }
 
 let _apiKeyWarned = false;
@@ -280,7 +290,7 @@ module.exports = async function handler(req, res) {
       routeSummary: ai?.routeSummary || plainRouteSummary(fromCode, toCode, depCategory, destCategory, hazards.length, hazardsFetchOk),
       departure: {
         metar: {
-          ...(departureMetar || {}),
+          ...normalizeMetarTimestamps(departureMetar || {}),
           translation: ai?.departureMetar || null
         },
         taf: {
@@ -290,7 +300,7 @@ module.exports = async function handler(req, res) {
       },
       destination: {
         metar: {
-          ...(destinationMetar || {}),
+          ...normalizeMetarTimestamps(destinationMetar || {}),
           translation: ai?.destinationMetar || null
         },
         taf: {
@@ -323,4 +333,4 @@ module.exports = async function handler(req, res) {
 };
 
 module.exports.handler = module.exports;
-module.exports._test = { summarizeHazards, summarizePireps, selectAfdText, plainRouteSummary };
+module.exports._test = { summarizeHazards, summarizePireps, selectAfdText, plainRouteSummary, normalizeMetarTimestamps };

@@ -3,6 +3,7 @@ const {
   normalizeAirportCode,
   calculateFlightCategory,
   parseMetarFields,
+  normalizeTimestamp,
   getCached,
   setCached,
   checkRateLimit
@@ -166,6 +167,25 @@ describe('calculateFlightCategory', () => {
   // Mixed-number visibility (1.5 SM < 3 SM = IFR)
   it('handles 1 1/2SM as IFR', () => {
     expect(calculateFlightCategory('KORD 1 1/2SM SKC')).toBe('IFR');
+  });
+});
+
+describe('normalizeTimestamp', () => {
+  it('converts unix seconds to ISO', () => {
+    expect(normalizeTimestamp(1774803180)).toBe('2026-03-29T16:53:00.000Z');
+  });
+
+  it('converts unix milliseconds to ISO', () => {
+    expect(normalizeTimestamp(1774803180000)).toBe('2026-03-29T16:53:00.000Z');
+  });
+
+  it('passes ISO strings through', () => {
+    expect(normalizeTimestamp('2026-03-29T17:00:00.000Z')).toBe('2026-03-29T17:00:00.000Z');
+  });
+
+  it('returns null for invalid input', () => {
+    expect(normalizeTimestamp('not-a-time')).toBeNull();
+    expect(normalizeTimestamp(null)).toBeNull();
   });
 });
 

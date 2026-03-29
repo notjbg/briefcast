@@ -1,6 +1,6 @@
 const { describe, it, expect } = require('bun:test');
 const { _test } = require('../api/briefing');
-const { summarizeHazards, summarizePireps, selectAfdText, plainRouteSummary } = _test;
+const { summarizeHazards, summarizePireps, selectAfdText, plainRouteSummary, normalizeMetarTimestamps } = _test;
 
 describe('summarizeHazards', () => {
   it('returns empty array with no inputs', () => {
@@ -108,5 +108,19 @@ describe('plainRouteSummary', () => {
   it('shows unavailable message when hazard fetch failed', () => {
     const result = plainRouteSummary('KORD', 'KLAX', 'VFR', 'VFR', 0, false);
     expect(result).toContain('temporarily unavailable');
+  });
+});
+
+describe('normalizeMetarTimestamps', () => {
+  it('normalizes upstream unix-second timestamps used by the briefing UI', () => {
+    const result = normalizeMetarTimestamps({
+      obsTime: 1774803060,
+      receiptTime: 1774803256,
+      reportTime: 1774803600
+    });
+
+    expect(result.obsTime).toBe('2026-03-29T16:51:00.000Z');
+    expect(result.receiptTime).toBe('2026-03-29T16:54:16.000Z');
+    expect(result.reportTime).toBe('2026-03-29T17:00:00.000Z');
   });
 });
