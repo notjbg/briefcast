@@ -5,7 +5,8 @@ const {
   cachedFetchJson,
   normalizeAirportCode,
   calculateFlightCategory,
-  airportForCode
+  airportForCode,
+  checkRateLimit
 } = require('./_utils');
 const { z } = require('zod');
 
@@ -79,26 +80,43 @@ function plainRouteSummary(from, to, depCategory, destCategory, hazardsCount, ha
   return `From ${from} to ${to}, current endpoint flight categories are ${depCategory} at departure and ${destCategory} at destination. ${hazardLine}`;
 }
 
+let _apiKeyWarned = false;
+
 async function maybeTranslateWithAnthropic(payload) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return null;
+  if (!apiKey) {
+    if (!_apiKeyWarned) {
+      console.warn('briefcast.config.missing_key', 'ANTHROPIC_API_KEY not set — AI translations disabled. Core feature is degraded.');
+      _apiKeyWarned = true;
+    }
+    return null;
+  }
 
   const prompt = `You are an aviation weather briefer. Convert weather data into concise plain English for a pilot.\n\nReturn strict JSON with keys: routeSummary, departureMetar, departureTaf, destinationMetar, destinationTaf, afdSummary.\n\nData:\n${JSON.stringify(payload)}`;
 
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01'
-    },
-    body: JSON.stringify({
-      model: 'claude-3-5-haiku-latest',
-      max_tokens: 650,
-      temperature: 0.2,
-      messages: [{ role: 'user', content: prompt }]
-    })
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12_000);
+
+  let response;
+  try {
+    response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-3-5-haiku-latest',
+        max_tokens: 650,
+        temperature: 0.2,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (!response.ok) {
     const text = await response.text();
@@ -123,9 +141,24 @@ module.exports = async function handler(req, res) {
   if (req.method !== 'GET') return json(res, 405, { error: 'Method not allowed' });
   const startTime = Date.now();
 
+  const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
+  if (!checkRateLimit(clientIp)) {
+    console.warn('briefcast.briefing.rate_limited', { ip: clientIp });
+    return json(res, 429, { error: 'Too many requests. Please wait a minute before trying again.' }, 5);
+  }
+
   const fromCode = normalizeAirportCode(req.query.from);
   const toCode = normalizeAirportCode(req.query.to);
-  const departTime = req.query.departTime ? String(req.query.departTime) : null;
+  let departTime = null;
+  if (req.query.departTime) {
+    const parsed = new Date(String(req.query.departTime));
+    if (!isNaN(parsed.getTime())) {
+      // Round to nearest 15 min for cache stability
+      const ms = parsed.getTime();
+      const rounded = new Date(Math.round(ms / (15 * 60_000)) * 15 * 60_000);
+      departTime = rounded.toISOString();
+    }
+  }
 
   if (!fromCode || !toCode) {
     return json(res, 400, { error: 'Invalid or missing from/to airport code. Use ICAO or IATA.' }, 10);
@@ -152,8 +185,9 @@ module.exports = async function handler(req, res) {
       cachedFetchJson(tafUrl, { headers: { Accept: 'application/json' } }, 120_000).catch(() => [])
     ];
 
+    let bbox = '';
     if (airportFrom && airportTo) {
-      const bbox = [
+      bbox = [
         Math.min(airportFrom.lon, airportTo.lon) - 2,
         Math.min(airportFrom.lat, airportTo.lat) - 2,
         Math.max(airportFrom.lon, airportTo.lon) + 2,
@@ -164,28 +198,34 @@ module.exports = async function handler(req, res) {
       promises.push(Promise.resolve([]));
     }
 
-    promises.push(cachedFetchJson('https://aviationweather.gov/api/data/airsigmet?format=json', { headers: { Accept: 'application/json' } }, 90_000).catch(() => { hazardsFetchOk = false; return []; }));
+    const airsigmetUrl = bbox
+      ? `https://aviationweather.gov/api/data/airsigmet?bbox=${bbox}&format=json`
+      : 'https://aviationweather.gov/api/data/airsigmet?format=json';
+    promises.push(cachedFetchJson(airsigmetUrl, { headers: { Accept: 'application/json' } }, 90_000).catch(() => { hazardsFetchOk = false; return []; }));
     promises.push(cachedFetchJson('https://api.weather.gov/alerts/active?event=Temporary%20Flight%20Restriction', { headers: { Accept: 'application/geo+json' } }, 120_000).catch(() => { hazardsFetchOk = false; return { features: [] }; }));
 
-    let afdRaw = '';
-    if (airportTo) {
+    // AFD fetch runs in parallel with METAR/TAF/PIREP/hazard fetches
+    const afdPromise = (async () => {
+      if (!airportTo) return '';
       try {
         const points = await cachedFetchJson(`https://api.weather.gov/points/${airportTo.lat},${airportTo.lon}`, { headers: { Accept: 'application/geo+json', 'User-Agent': 'briefcast/1.0' } }, 24 * 60_000);
         const office = points?.properties?.gridId;
-        if (office) {
-          const afdProducts = await cachedFetchJson(`https://api.weather.gov/products/types/AFD/locations/${office}?limit=1`, { headers: { Accept: 'application/geo+json', 'User-Agent': 'briefcast/1.0' } }, 15 * 60_000);
-          const latest = afdProducts?.['@graph']?.[0]?.id;
-          if (latest) {
-            const afdDetail = await cachedFetchJson(latest, { headers: { Accept: 'application/geo+json', 'User-Agent': 'briefcast/1.0' } }, 15 * 60_000);
-            afdRaw = afdDetail?.productText || '';
-          }
-        }
+        if (!office) return '';
+        const afdProducts = await cachedFetchJson(`https://api.weather.gov/products/types/AFD/locations/${office}?limit=1`, { headers: { Accept: 'application/geo+json', 'User-Agent': 'briefcast/1.0' } }, 15 * 60_000);
+        const latest = afdProducts?.['@graph']?.[0]?.id;
+        if (!latest) return '';
+        const afdDetail = await cachedFetchJson(latest, { headers: { Accept: 'application/geo+json', 'User-Agent': 'briefcast/1.0' } }, 15 * 60_000);
+        return afdDetail?.productText || '';
       } catch (afdError) {
         console.warn('briefcast.afd_fetch_failed', afdError.message);
+        return '';
       }
-    }
+    })();
 
-    const [metars, tafs, pirepsRaw, airsigmetsRaw, tfrAlerts] = await Promise.all(promises);
+    const [[metars, tafs, pirepsRaw, airsigmetsRaw, tfrAlerts], afdRaw] = await Promise.all([
+      Promise.all(promises),
+      afdPromise
+    ]);
 
     const isStale = !!(metars?.__stale || tafs?.__stale || airsigmetsRaw?.__stale || tfrAlerts?.__stale);
 
@@ -268,7 +308,9 @@ module.exports = async function handler(req, res) {
         departure: depCategory,
         destination: destCategory
       },
-      stale: isStale || undefined
+      stale: isStale || undefined,
+      generatedAt: new Date().toISOString(),
+      aiUsed: !!ai
     };
 
     setCached(cacheKey, output, BRIEFING_TTL_MS);

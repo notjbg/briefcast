@@ -24,6 +24,7 @@ function getCached(key) {
   if (!hit) return null;
   if (Date.now() > hit.expiresAt) {
     staleCache.set(key, hit.value);
+    evictOldest(staleCache);
     memoryCache.delete(key);
     return null;
   }
@@ -36,8 +37,17 @@ function getStaleCached(key) {
   return staleCache.get(key) || null;
 }
 
+const MAX_CACHE_ENTRIES = 1000;
+
+function evictOldest(map) {
+  if (map.size <= MAX_CACHE_ENTRIES) return;
+  const firstKey = map.keys().next().value;
+  map.delete(firstKey);
+}
+
 function setCached(key, value, ttlMs) {
   memoryCache.set(key, { value, expiresAt: Date.now() + ttlMs });
+  evictOldest(memoryCache);
 }
 
 function getHostname(url) {
@@ -77,8 +87,7 @@ async function cachedFetchJson(url, options = {}, ttlMs = 60_000) {
     const stale = getStaleCached(key);
     if (stale) {
       console.log('briefcast.upstream.stale_served', { hostname, url: url.slice(0, 120) });
-      stale.__stale = true;
-      return stale;
+      return Array.isArray(stale) ? Object.assign([...stale], { __stale: true }) : { ...stale, __stale: true };
     }
   }
 
@@ -106,8 +115,7 @@ async function cachedFetchJson(url, options = {}, ttlMs = 60_000) {
       const stale = getStaleCached(key);
       if (stale) {
         console.log('briefcast.upstream.stale_served', { hostname, failCount, url: url.slice(0, 120) });
-        stale.__stale = true;
-        return stale;
+        return Array.isArray(stale) ? Object.assign([...stale], { __stale: true }) : { ...stale, __stale: true };
       }
     }
 
@@ -121,6 +129,8 @@ function normalizeAirportCode(value) {
   if (!raw) return null;
   if (airportByIcao.has(raw)) return raw;
   if (airportByIata.has(raw)) return airportByIata.get(raw);
+  // Accept any valid 4-letter ICAO code even if not in the top-200 list
+  if (/^[A-Z]{4}$/.test(raw)) return raw;
   return null;
 }
 
@@ -177,6 +187,26 @@ function airportForCode(icao) {
   return airportByIcao.get(icao) || null;
 }
 
+const rateLimitMap = globalThis.__briefcastRateLimit || new Map();
+globalThis.__briefcastRateLimit = rateLimitMap;
+
+function checkRateLimit(ip, maxRequests = 10, windowMs = 60_000) {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + windowMs });
+    // Evict stale IPs periodically
+    if (rateLimitMap.size > 5000) {
+      for (const [k, v] of rateLimitMap) {
+        if (now > v.resetAt) rateLimitMap.delete(k);
+      }
+    }
+    return true;
+  }
+  entry.count++;
+  return entry.count <= maxRequests;
+}
+
 module.exports = {
   AIRPORTS,
   json,
@@ -187,5 +217,6 @@ module.exports = {
   normalizeAirportCode,
   parseMetarFields,
   calculateFlightCategory,
-  airportForCode
+  airportForCode,
+  checkRateLimit
 };

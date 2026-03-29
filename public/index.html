@@ -8,11 +8,11 @@
   <meta property="og:title" content="BriefCast — Pre-Flight Weather Briefings in Plain English" />
   <meta property="og:description" content="Plain-English weather briefings for pilots with METARs, TAFs, AFDs, PIREPs, and hazards in one place." />
   <meta property="og:type" content="website" />
-  <meta property="og:image" content="/og-image.svg" />
+  <meta property="og:image" content="/og-image.png" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="BriefCast — Pre-Flight Weather Briefings in Plain English" />
   <meta name="twitter:description" content="Pre-flight weather briefings translated from aviation jargon to readable prose." />
-  <meta name="twitter:image" content="/og-image.svg" />
+  <meta name="twitter:image" content="/og-image.png" />
   <style>
     :root {
       color-scheme: light;
@@ -490,6 +490,7 @@
         <label style="margin-top:12px;max-width:360px;">
           <span class="sans">Planned Departure (optional)</span>
           <input id="departTimeInput" type="datetime-local" name="departTime" aria-label="Planned departure date and time" />
+          <span class="input-hint sans">Helps the AI tailor the summary to your departure window. Does not change raw weather data.</span>
         </label>
         <p class="input-hint sans">Type city, airport name, ICAO, or IATA. Example: <code>KORD</code>, <code>LAX</code>, <code>Chicago O'Hare</code>.</p>
       </form>
@@ -502,15 +503,13 @@
     </section>
 
     <section class="card pro no-print" aria-labelledby="pro-title">
-      <p class="section-kicker">BriefCast Pro</p>
-      <h2 id="pro-title">Get BriefCast Pro — $4.99/mo</h2>
-      <p class="sans">Unlock AI-translated briefings, saved routes, email briefings, all airports, and an ad-free experience.</p>
-      <p class="sans"><strong>Free tier:</strong> decoded METAR/TAF basics only, no AI translation, no saved routes.</p>
+      <p class="section-kicker">Coming Soon</p>
+      <h2 id="pro-title">BriefCast Pro</h2>
+      <p class="sans">We're building premium features for pilots who want more. Join the waitlist to be first in line.</p>
       <ul class="sans">
-        <li>AI translation of METAR/TAF/AFD into plain pilot-ready prose</li>
         <li>Saved route presets and repeat briefing in one click</li>
         <li>Email briefing delivery before scheduled departures</li>
-        <li>Expanded airport coverage and historical comparisons</li>
+        <li>Historical weather comparisons</li>
       </ul>
       <div class="footer-links">
         <a class="btn btn-primary" href="https://plaincast.live" target="_blank" rel="noopener">Join Waitlist</a>
@@ -824,10 +823,10 @@
       function render(items) {
         filtered = items.slice(0, 30);
         list.innerHTML = filtered.map((a, i) =>
-          `<div class="combobox-option${i === activeIdx ? ' active' : ''}" role="option" data-icao="${a.icao}">
-            <span class="code">${a.icao}</span>
-            <span class="iata">${a.iata || '---'}</span>
-            <span class="name">${escapeHtml(a.name)} (${a.state})</span>
+          `<div class="combobox-option${i === activeIdx ? ' active' : ''}" role="option" data-icao="${escapeHtml(a.icao)}">
+            <span class="code">${escapeHtml(a.icao)}</span>
+            <span class="iata">${escapeHtml(a.iata || '---')}</span>
+            <span class="name">${escapeHtml(a.name)} (${escapeHtml(a.state)})</span>
           </div>`
         ).join("");
         list.classList.toggle("open", filtered.length > 0);
@@ -1113,7 +1112,7 @@
 
       // AI vs parser distinction (6.5g)
       const sourceLabel = metar?.translation
-        ? `<p class="source-label">AI translated</p>`
+        ? `<p class="source-label">AI-generated summary — verify with official sources</p>`
         : `<p class="source-label">Decoded from raw data</p>`;
 
       return `
@@ -1190,7 +1189,8 @@
           <p class="section-kicker">Route Summary</p>
           <h2>${escapeHtml(fromCode)} to ${escapeHtml(toCode)}</h2>
           <p>${withGlossaryTerms(routeSummary)}</p>
-          <p class="meta">Generated: ${new Date().toLocaleString()}</p>
+          ${data.aiUsed ? '<p class="source-label">AI-generated summary — verify with official sources</p>' : ''}
+          <p class="meta">Generated: ${data.generatedAt ? new Date(data.generatedAt).toLocaleString() : new Date().toLocaleString()}</p>
         </section>
         <div class="grid-2">
           ${renderAirportWeather("Departure Weather", fromAirport, data.departure?.metar || {}, data.departure?.taf || {})}
@@ -1200,6 +1200,7 @@
           <p class="section-kicker">Area Forecast Discussion</p>
           <h2>Forecaster Context (${fromCode}/${toCode})</h2>
           <p>${withGlossaryTerms(afd)}</p>
+          ${data.afd?.summary ? '<p class="source-label">AI-generated summary — verify with official sources</p>' : ''}
           <details>
             <summary class="sans">Raw AFD Excerpt</summary>
             <pre class="mono">${escapeHtml(data.afd?.raw || "No raw AFD excerpt available.")}</pre>
@@ -1300,7 +1301,20 @@
         els.results.scrollIntoView({ behavior: 'smooth', block: 'start' });
       } catch (error) {
         clearLoadingInterval();
-        els.results.innerHTML = "";
+        els.results.replaceChildren();
+        const errCard = document.createElement("section");
+        errCard.className = "card";
+        const errMsg = document.createElement("p");
+        errMsg.className = "sans error";
+        errMsg.textContent = `Unable to load briefing: ${error.message}`;
+        const retryBtn = document.createElement("button");
+        retryBtn.className = "btn";
+        retryBtn.textContent = "Try Again";
+        retryBtn.style.marginTop = "10px";
+        retryBtn.addEventListener("click", () => els.briefingForm.requestSubmit());
+        errCard.appendChild(errMsg);
+        errCard.appendChild(retryBtn);
+        els.results.appendChild(errCard);
         setStatus(`Unable to load briefing: ${error.message}`, true);
       } finally {
         state.busy = false;
