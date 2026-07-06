@@ -45,6 +45,19 @@ describe('computeVerdict', () => {
     expect(r.reasons.map((x) => x.code)).toContain('tfr_at_endpoint');
   });
 
+  it('INSUFFICIENT DATA when a dataOk flag is absent (undefined), not just false', () => {
+    // departureMetar key absent → must be treated as missing, IFR weather rules must NOT rescue a GO
+    const r = computeVerdict(factors({ category: 'IFR', ceilingFt: 500 }, {}, {}, { departureMetar: undefined }), STANDARD_MINIMUMS);
+    expect(r.verdict).toBe('INSUFFICIENT DATA');
+    expect(r.reasons.map((x) => x.code)).toContain('missing_metar');
+  });
+
+  it('INSUFFICIENT DATA with TWO missing_metar reasons when dataOk is entirely absent', () => {
+    const r = computeVerdict({ departure: { ...CLEAR, name: 'KORD' }, destination: { ...CLEAR, name: 'KLAX' } }, STANDARD_MINIMUMS);
+    expect(r.verdict).toBe('INSUFFICIENT DATA');
+    expect(r.reasons.filter((x) => x.code === 'missing_metar')).toHaveLength(2);
+  });
+
   it('NO-GO on IFR/LIFR category at either endpoint', () => {
     expect(computeVerdict(factors({ category: 'IFR', ceilingFt: 800 }), STANDARD_MINIMUMS).verdict).toBe('NO-GO');
     expect(computeVerdict(factors({}, { category: 'LIFR', ceilingFt: 300 }), STANDARD_MINIMUMS).verdict).toBe('NO-GO');

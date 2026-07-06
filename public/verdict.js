@@ -50,10 +50,11 @@
     const mins = minimums || STANDARD_MINIMUMS;
     const reasons = [];
 
-    if (!factors || !factors.dataOk || factors.dataOk.departureMetar === false) {
+    // Any dataOk flag that is not exactly `true` (false, undefined, or absent) is a data gap → degrade pessimistically.
+    if (factors?.dataOk?.departureMetar !== true) {
       reasons.push(reason('insufficient', 'missing_metar', `No current METAR available for ${factors?.departure?.name || 'departure'}`));
     }
-    if (factors?.dataOk && factors.dataOk.destinationMetar === false) {
+    if (factors?.dataOk?.destinationMetar !== true) {
       reasons.push(reason('insufficient', 'missing_metar', `No current METAR available for ${factors?.destination?.name || 'destination'}`));
     }
 
