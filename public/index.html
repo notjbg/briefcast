@@ -399,9 +399,10 @@
     [data-theme="dark"] .timeline-cell.v-go { background: #4ade80; }
     [data-theme="dark"] .timeline-cell.v-marginal { background: #fbbf24; }
     [data-theme="dark"] .timeline-cell.v-no-go { background: #f87171; }
+    .timeline-cell.v-empty { background: var(--line); opacity: 0.45; }
+    [data-theme="dark"] .timeline-cell.v-empty { background: #374151; opacity: 0.6; }
     .timeline-hours { display: flex; gap: 2px; margin-left: 48px; }
     .timeline-hour { flex: 1; font-size: 0.65rem; color: var(--muted); text-align: center; min-width: 14px; }
-    .data-age { font-size: 0.72rem; color: var(--muted); }
     .advisory-line { font-size: 0.78rem; color: var(--muted); margin-top: 8px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
     .minimums-editor { display: none; gap: 8px; flex-wrap: wrap; margin-top: 10px; align-items: end; }
     .minimums-editor.open { display: flex; }
@@ -1012,34 +1013,44 @@
       return better ? `${nowV} now — improving to GO around ${hourLabel(better.hourIso)}` : `${nowV} throughout the window`;
     }
 
-    function renderTimelineRow(label, cells) {
+    function timelineSlots(tl) {
+      // buildTimeline skips uncovered hours, so DEP/DEST arrays can be
+      // different-length subsequences of the hourly slots. Render both rows
+      // on a fixed slot grid (union of hourIso values, sorted ascending) so
+      // columns stay aligned under the shared hour header.
+      const set = new Set();
+      for (const cells of [tl.departure, tl.destination]) {
+        if (cells) for (const c of cells) set.add(c.hourIso);
+      }
+      return [...set].sort((a, b) => new Date(a) - new Date(b));
+    }
+
+    function renderTimelineRow(label, cells, slots) {
       if (!cells) return '';
-      const cellsHtml = cells.map((c) =>
-        `<div class="timeline-cell ${TL_CLASS[c.verdict] || ''}" title="${escapeHtml(hourLabel(c.hourIso))} — ${escapeHtml(c.category)} / ${escapeHtml(c.verdict)}"></div>`
-      ).join('');
+      const byHour = new Map(cells.map((c) => [c.hourIso, c]));
+      const cellsHtml = slots.map((iso) => {
+        const c = byHour.get(iso);
+        return c
+          ? `<div class="timeline-cell ${TL_CLASS[c.verdict] || ''}" title="${escapeHtml(hourLabel(c.hourIso))} — ${escapeHtml(c.category)} / ${escapeHtml(c.verdict)}"></div>`
+          : `<div class="timeline-cell v-empty" title="${escapeHtml(hourLabel(iso))} — no forecast coverage"></div>`;
+      }).join('');
       return `<div class="timeline-row"><span class="timeline-label">${escapeHtml(label)}</span>${cellsHtml}</div>`;
     }
 
     function renderTimeline(data) {
       const tl = data.timeline;
       if (!tl || (!tl.departure && !tl.destination)) return '';
-      const hours = (tl.departure || tl.destination).map((c) => `<span class="timeline-hour">${escapeHtml(hourLabel(c.hourIso).slice(0, 2))}</span>`).join('');
+      const slots = timelineSlots(tl);
+      const hours = slots.map((iso) => `<span class="timeline-hour">${escapeHtml(hourLabel(iso).slice(0, 2))}</span>`).join('');
       const caption = timelineCaption(tl.departure || tl.destination);
       return `
         <section class="card">
           <p class="section-kicker">Departure Window · next 12 hours (weather only — hazards not hourly-forecast)</p>
           <p class="sans">${escapeHtml(caption)}</p>
-          ${renderTimelineRow('DEP', tl.departure)}
-          ${renderTimelineRow('DEST', tl.destination)}
+          ${renderTimelineRow('DEP', tl.departure, slots)}
+          ${renderTimelineRow('DEST', tl.destination, slots)}
           <div class="timeline-hours">${hours}</div>
         </section>`;
-    }
-
-    function dataAge(iso) {
-      if (!iso) return '';
-      const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
-      if (!Number.isFinite(mins) || mins < 0) return '';
-      return `<span class="data-age">observed ${mins} min ago</span>`;
     }
 
     function renderVerdictHero(data) {
@@ -1294,7 +1305,7 @@
 
       return `
         <article class="card" aria-label="${escapeHtml(title)} weather">
-          <p class="section-kicker">${escapeHtml(title)} ${dataAge(obsTime)}</p>
+          <p class="section-kicker">${escapeHtml(title)}</p>
           <h2>${escapeHtml(airport?.name || "Unknown Airport")} (${escapeHtml(airport?.icao || "----")})</h2>
           ${metarAgeHtml}
           <p>${withGlossaryTerms(metar?.translation || `Current ${"METAR"}: ${metarDecoded.wind}. ${metarDecoded.visibility}. ${metarDecoded.clouds}. ${metarDecoded.tempDew}. ${metarDecoded.altimeter}. Weather: ${metarDecoded.weather}.`)}</p>
