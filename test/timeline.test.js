@@ -1,5 +1,5 @@
 const { describe, it, expect } = require('bun:test');
-const { buildTimeline } = require('../api/_timeline');
+const { buildTimeline, _test } = require('../api/_timeline');
 const taf = require('./fixtures/taf-kord.json');
 
 const NOW = 1783296000000; // 2026-07-06T00:00:00Z, aligned with fixture
@@ -44,5 +44,49 @@ describe('buildTimeline', () => {
     const tl = buildTimeline(taf, NOW - 4 * 3600_000, 12);
     expect(tl.length).toBe(8);
     expect(tl[0].hourIso).toBe('2026-07-06T00:00:00.000Z');
+  });
+
+  it('UNKNOWN hours (null ceiling and visibility) degrade to MARGINAL, never GO', () => {
+    const gapTaf = {
+      icaoId: 'KORD',
+      fcsts: [
+        {
+          timeFrom: 1783296000,
+          timeTo: 1783339200,
+          fcstChange: null,
+          probability: null,
+          wdir: 200,
+          wspd: 10,
+          wgst: null,
+          visib: null,
+          clouds: [{ cover: 'SCT', base: 3500 }]
+        }
+      ]
+    };
+    const tl = buildTimeline(gapTaf, NOW, 6);
+    expect(tl.length).toBe(6);
+    tl.forEach((hour) => {
+      expect(hour.category).toBe('UNKNOWN');
+      expect(hour.verdict).toBe('MARGINAL');
+    });
+  });
+});
+
+describe('parseVisib', () => {
+  const { parseVisib } = _test;
+  it('parses plain fractions', () => {
+    expect(parseVisib('1/2')).toBe(0.5);
+  });
+  it('parses mixed fractions', () => {
+    expect(parseVisib('1 1/2')).toBe(1.5);
+  });
+  it('keeps N+ string behavior', () => {
+    expect(parseVisib('6+')).toBe(6);
+  });
+  it('keeps numeric behavior', () => {
+    expect(parseVisib(3)).toBe(3);
+  });
+  it('returns null for unparseable strings', () => {
+    expect(parseVisib('garbage')).toBe(null);
   });
 });

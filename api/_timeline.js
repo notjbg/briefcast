@@ -1,13 +1,25 @@
 const { categoryFromFields } = require('./_utils');
 const { endpointWeatherReasons, STANDARD_MINIMUMS } = require('../public/verdict.js');
 
-const CATEGORY_RANK = { VFR: 3, MVFR: 2, IFR: 1, LIFR: 0, UNKNOWN: 2.5 };
-
 function parseVisib(visib) {
   if (typeof visib === 'number' && Number.isFinite(visib)) return visib;
   if (typeof visib === 'string') {
-    const m = visib.match(/^([\d.]+)\+?$/);
-    if (m) return Number(m[1]);
+    const s = visib.trim();
+    // Numeric or "N+" strings (e.g. "6+", "3.5")
+    const numMatch = s.match(/^([\d.]+)\+?$/);
+    if (numMatch) return Number(numMatch[1]);
+    // Mixed fraction "1 1/2" → 1.5
+    const mixedMatch = s.match(/^(\d+)\s+(\d+)\/(\d+)$/);
+    if (mixedMatch) {
+      const [, whole, n, d] = mixedMatch;
+      if (Number(d) !== 0) return Number(whole) + Number(n) / Number(d);
+    }
+    // Plain fraction "1/2" → 0.5
+    const fracMatch = s.match(/^(\d+)\/(\d+)$/);
+    if (fracMatch) {
+      const [, n, d] = fracMatch;
+      if (Number(d) !== 0) return Number(n) / Number(d);
+    }
   }
   return null;
 }
@@ -75,6 +87,9 @@ function buildTimeline(taf, nowMs, hours = 12) {
     let verdict = 'GO';
     if (reasons.some((r) => r.severity === 'no-go')) verdict = 'NO-GO';
     else if (reasons.some((r) => r.severity === 'marginal')) verdict = 'MARGINAL';
+    // A data gap (no ceiling AND no visibility → UNKNOWN) fires no weather rules;
+    // degrade toward caution rather than resolving to GO.
+    else if (category === 'UNKNOWN') verdict = 'MARGINAL';
 
     out.push({ hourIso: new Date(t).toISOString(), category, verdict });
   }
