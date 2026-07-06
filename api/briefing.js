@@ -11,6 +11,7 @@ const {
   parseMetarFields
 } = require('./_utils');
 const { computeVerdict, parseWind, STANDARD_MINIMUMS } = require('../public/verdict.js');
+const { buildTimeline } = require('./_timeline');
 const { z } = require('zod');
 
 const TFR_RADIUS_DEG = 0.5; // ~30 nm
@@ -344,6 +345,11 @@ module.exports = async function handler(req, res) {
     });
     const verdictResult = computeVerdict(factors, STANDARD_MINIMUMS);
 
+    const nowMs = Date.now();
+    const depTimeline = buildTimeline(departureTaf, nowMs);
+    const destTimeline = buildTimeline(destinationTaf, nowMs);
+    const timeline = (depTimeline || destTimeline) ? { departure: depTimeline, destination: destTimeline } : null;
+
     const aiInput = {
       from: fromCode,
       to: toCode,
@@ -400,6 +406,7 @@ module.exports = async function handler(req, res) {
       },
       verdict: { ...verdictResult, minimums: STANDARD_MINIMUMS },
       factors,
+      timeline,
       stale: isStale || undefined,
       generatedAt: new Date().toISOString(),
       aiUsed: !!ai
