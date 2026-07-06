@@ -56,3 +56,15 @@ $ bun test test/verdict.test.js
 $ bun test
  79 pass / 0 fail / 129 expect() calls (3 files)
 ```
+
+---
+
+## Final-review fix wave (2026-07-05)
+
+**Blocker fixed:** A present-but-unparseable METAR resolved to GO, violating the "every data gap degrades toward caution" invariant. `api/briefing.js` sets `dataOk` from METAR *presence* (`!!rawOb`), not parseability, so a degraded AUTO report (e.g. `KXYZ 041215Z AUTO 00000KT //// // ////// 10/09 A3001 RMK AO2`) parses to `ceilingFt=null, visibilitySm=null` → category `UNKNOWN` → no weather reasons → GO.
+
+**Fix (TDD, `public/verdict.js`):** Added `unparseableMetarReasons(name, ep)`, called from `computeVerdict` for each endpoint whose `dataOk` is true. When `category === 'UNKNOWN' && ceilingFt === null && visibilitySm === null`, it pushes `{ severity: 'insufficient', code: 'unparseable_metar', text: 'METAR for <name> could not be parsed — ceiling and visibility unknown' }`, so severity precedence yields INSUFFICIENT DATA. Wind presence does not rescue it (ceiling+vis unknown = no VFR judgment). Guard lives in `computeVerdict` ONLY — `endpointWeatherReasons` signature/behavior unchanged, so `api/_timeline.js` (which maps UNKNOWN → MARGINAL locally) is unaffected.
+
+**Tests added:** (a) one endpoint unparseable → INSUFFICIENT DATA with `unparseable_metar` naming the endpoint; (b) both clear+parseable → still GO (no regression); (c) null ceiling + numeric visibility (VFR) → NOT flagged. Plus parseWind edge cases: `/////KT` and `//////KT` → nulls; `00000KT` → `{0, null}`; 3-digit gust `24010G105KT` → `{10, 105}`; first-match-wins so a `PK WND` token inside RMK is not double-matched.
+
+**Verification:** `bun test test/verdict.test.js` → 25 pass / 0 fail. Full `bun test` → 110 pass / 0 fail (was 104; +6 new). Timeline tests unchanged and green.

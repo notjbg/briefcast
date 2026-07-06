@@ -28,6 +28,19 @@ describe('parseWind', () => {
     expect(parseWind('KORD 060251Z 10SM BKN025')).toEqual({ windKt: null, gustKt: null });
     expect(parseWind(null)).toEqual({ windKt: null, gustKt: null });
   });
+  it('returns nulls for masked wind (/////KT variants)', () => {
+    expect(parseWind('KXYZ 041215Z /////KT 10SM')).toEqual({ windKt: null, gustKt: null });
+    expect(parseWind('KXYZ 041215Z //////KT 10SM')).toEqual({ windKt: null, gustKt: null });
+  });
+  it('parses calm wind 00000KT as 0 with no gust', () => {
+    expect(parseWind('KXYZ 041215Z 00000KT 10SM')).toEqual({ windKt: 0, gustKt: null });
+  });
+  it('parses 3-digit gusts', () => {
+    expect(parseWind('KXYZ 041215Z 24010G105KT 10SM')).toEqual({ windKt: 10, gustKt: 105 });
+  });
+  it('takes the first wind match and does not double-match a PK WND token in RMK', () => {
+    expect(parseWind('KORD 060251Z 02009KT 10SM RMK AO2 PK WND 36032/1645')).toEqual({ windKt: 9, gustKt: null });
+  });
 });
 
 describe('computeVerdict', () => {
@@ -56,6 +69,23 @@ describe('computeVerdict', () => {
     const r = computeVerdict({ departure: { ...CLEAR, name: 'KORD' }, destination: { ...CLEAR, name: 'KLAX' } }, STANDARD_MINIMUMS);
     expect(r.verdict).toBe('INSUFFICIENT DATA');
     expect(r.reasons.filter((x) => x.code === 'missing_metar')).toHaveLength(2);
+  });
+
+  it('INSUFFICIENT DATA when an endpoint METAR is present but unparseable (category UNKNOWN, null ceiling/vis)', () => {
+    // A degraded AUTO METAR whose ceiling and visibility masked out → dataOk true but no VFR judgment possible.
+    const unparseable = { category: 'UNKNOWN', ceilingFt: null, visibilitySm: null, windKt: 0, gustKt: null };
+    const r = computeVerdict(factors(unparseable, {}, {}, {}), STANDARD_MINIMUMS);
+    expect(r.verdict).toBe('INSUFFICIENT DATA');
+    const unp = r.reasons.filter((x) => x.code === 'unparseable_metar');
+    expect(unp).toHaveLength(1);
+    expect(unp[0].text).toContain('KORD');
+  });
+
+  it('does NOT flag a normal no-ceiling endpoint (null ceiling but numeric visibility → VFR)', () => {
+    // Clear skies: ceiling null, visibility 10, category VFR. Must remain GO.
+    const r = computeVerdict(factors({ ceilingFt: null, visibilitySm: 10, category: 'VFR' }), STANDARD_MINIMUMS);
+    expect(r.verdict).toBe('GO');
+    expect(r.reasons.map((x) => x.code)).not.toContain('unparseable_metar');
   });
 
   it('NO-GO on IFR/LIFR category at either endpoint', () => {

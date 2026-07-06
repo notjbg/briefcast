@@ -46,6 +46,15 @@
     return out;
   }
 
+  // Guard used only by computeVerdict (NOT by the timeline, which maps UNKNOWN → MARGINAL locally).
+  // Fires when a present METAR yielded no usable ceiling AND no usable visibility.
+  function unparseableMetarReasons(name, ep) {
+    if (ep && ep.category === 'UNKNOWN' && ep.ceilingFt === null && ep.visibilitySm === null) {
+      return [reason('insufficient', 'unparseable_metar', `METAR for ${name} could not be parsed — ceiling and visibility unknown`)];
+    }
+    return [];
+  }
+
   function computeVerdict(factors, minimums) {
     const mins = minimums || STANDARD_MINIMUMS;
     const reasons = [];
@@ -58,10 +67,15 @@
       reasons.push(reason('insufficient', 'missing_metar', `No current METAR available for ${factors?.destination?.name || 'destination'}`));
     }
 
+    // A METAR can be present (dataOk true) yet unparseable — e.g. a degraded AUTO report with masked
+    // ceiling/visibility groups. Category 'UNKNOWN' with BOTH ceiling and visibility null means no VFR
+    // judgment is possible (wind alone can't rescue it), so degrade to INSUFFICIENT DATA, never GO.
     if (factors?.dataOk?.departureMetar) {
+      reasons.push(...unparseableMetarReasons(factors.departure?.name || 'departure', factors.departure));
       reasons.push(...endpointWeatherReasons(factors.departure?.name || 'departure', factors.departure, mins));
     }
     if (factors?.dataOk?.destinationMetar) {
+      reasons.push(...unparseableMetarReasons(factors.destination?.name || 'destination', factors.destination));
       reasons.push(...endpointWeatherReasons(factors.destination?.name || 'destination', factors.destination, mins));
     }
 
