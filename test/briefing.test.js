@@ -188,3 +188,22 @@ describe('tfrNearEndpoint', () => {
     expect(tfrNearEndpoint([feature([[-87.8, 42.1]])], [null, null])).toBe(false);
   });
 });
+
+describe('contradictsVerdict', () => {
+  const { contradictsVerdict } = _test;
+  it('flags go-language against a NO-GO verdict', () => {
+    expect(contradictsVerdict('Conditions look great, you are good to go today.', 'NO-GO')).toBe(true);
+    expect(contradictsVerdict('It is a go for this flight.', 'NO-GO')).toBe(true);
+  });
+  it('flags no-go language against a GO verdict', () => {
+    expect(contradictsVerdict('I would not fly today, this is a no-go.', 'GO')).toBe(true);
+  });
+  it('passes consistent narrative', () => {
+    expect(contradictsVerdict('Ceilings are low; the verdict is NO-GO because of IFR conditions.', 'NO-GO')).toBe(false);
+    expect(contradictsVerdict('Clear skies and light winds support the GO verdict.', 'GO')).toBe(false);
+  });
+  it('passes empty/absent text', () => {
+    expect(contradictsVerdict('', 'GO')).toBe(false);
+    expect(contradictsVerdict(null, 'NO-GO')).toBe(false);
+  });
+});

@@ -20,7 +20,7 @@ BriefCast is a single-page pre-flight weather briefing app that translates aviat
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `ANTHROPIC_API_KEY` | Optional | Enables AI plain-English translation in `/api/briefing` |
+| `AI_GATEWAY_API_KEY` | Optional | Enables verdict-aware AI plain-English narratives in `/api/briefing` via Vercel AI Gateway. Absent/failed → deterministic verdict still returned, `aiUsed: false`. |
 | `RESEND_API_KEY` | Optional | Enables waitlist email capture via Resend |
 
 ## Local Development

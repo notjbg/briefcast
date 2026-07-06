@@ -80,6 +80,7 @@ function buildFactors({ fromCode, toCode, departureMetar, destinationMetar, sigm
 
 const AiBriefingSchema = z.object({
   routeSummary: z.string().optional(),
+  verdictExplanation: z.string().optional(),
   departureMetar: z.string().optional(),
   departureTaf: z.string().optional(),
   destinationMetar: z.string().optional(),
@@ -157,36 +158,64 @@ function normalizeMetarTimestamps(metar = {}) {
   };
 }
 
+// Contradiction guard: the deterministic verdict is authoritative. If AI narrative
+// text asserts the opposite go/no-go stance, we discard the AI output entirely and
+// fall back to the deterministic verdict + plain-English summary. The AI may only
+// EXPLAIN the verdict, never override it.
+const GO_PHRASES = /\b(good to go|it'?s a go\b|go for (this|the) flight|clear to fly|great day to fly)\b/i;
+const NOGO_PHRASES = /\b(no.?go|do not fly|would not fly|don'?t fly|stay on the ground|cancel (the|this) flight)\b/i;
+
+function contradictsVerdict(text, verdict) {
+  if (!text) return false;
+  if (verdict === 'NO-GO' || verdict === 'INSUFFICIENT DATA') return GO_PHRASES.test(text) && !NOGO_PHRASES.test(text);
+  if (verdict === 'GO') return NOGO_PHRASES.test(text) && !GO_PHRASES.test(text);
+  return false;
+}
+
 let _apiKeyWarned = false;
 
-async function maybeTranslateWithAnthropic(payload) {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+async function maybeTranslateWithGateway(payload, verdictResult) {
+  const apiKey = process.env.AI_GATEWAY_API_KEY;
   if (!apiKey) {
     if (!_apiKeyWarned) {
-      console.warn('briefcast.config.missing_key', 'ANTHROPIC_API_KEY not set — AI translations disabled. Core feature is degraded.');
+      console.warn('briefcast.config.missing_key', 'AI_GATEWAY_API_KEY not set — AI narratives disabled. Deterministic verdict still active.');
       _apiKeyWarned = true;
     }
     return null;
   }
 
-  const prompt = `You are an aviation weather briefer. Convert weather data into concise plain English for a pilot.\n\nReturn strict JSON with keys: routeSummary, departureMetar, departureTaf, destinationMetar, destinationTaf, afdSummary.\n\nData:\n${JSON.stringify(payload)}`;
+  const prompt = `You are an aviation weather briefer explaining conditions to a VFR private pilot in plain English.
+
+A deterministic system has already computed the go/no-go verdict. Your job is to EXPLAIN it — you must NEVER contradict it, soften it, or issue your own go/no-go decision.
+
+VERDICT: ${verdictResult.verdict}
+REASONS: ${verdictResult.reasons.map((r) => `- [${r.severity}] ${r.text}`).join('\n')}
+
+Return strict JSON with keys: routeSummary, verdictExplanation, departureMetar, departureTaf, destinationMetar, destinationTaf, afdSummary.
+- verdictExplanation: 2-3 sentences explaining WHY the verdict is ${verdictResult.verdict}, in plain English, referencing the reasons above.
+- The other keys: plain-English translations of the corresponding raw data. Never invent data not present below.
+
+Data:
+${JSON.stringify(payload)}`;
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 12_000);
 
   let response;
   try {
-    response = await fetch('https://api.anthropic.com/v1/messages', {
+    // Vercel AI Gateway, Anthropic-compatible endpoint (mirrors plaincast's
+    // production model slug 'anthropic/claude-haiku-4.5' via AI_GATEWAY_API_KEY).
+    response = await fetch('https://ai-gateway.vercel.sh/v1/messages', {
       method: 'POST',
       signal: controller.signal,
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': apiKey,
+        'Authorization': `Bearer ${apiKey}`,
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: 'claude-3-5-haiku-latest',
-        max_tokens: 650,
+        model: 'anthropic/claude-haiku-4.5',
+        max_tokens: 800,
         temperature: 0.2,
         messages: [{ role: 'user', content: prompt }]
       })
@@ -197,7 +226,7 @@ async function maybeTranslateWithAnthropic(payload) {
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(`Anthropic error ${response.status}: ${text.slice(0, 240)}`);
+    throw new Error(`AI Gateway error ${response.status}: ${text.slice(0, 240)}`);
   }
 
   const data = await response.json();
@@ -206,12 +235,19 @@ async function maybeTranslateWithAnthropic(payload) {
   const jsonEnd = text.lastIndexOf('}');
   if (jsonStart === -1 || jsonEnd === -1) return null;
 
+  let parsed;
   try {
-    const parsed = JSON.parse(text.slice(jsonStart, jsonEnd + 1));
-    return AiBriefingSchema.parse(parsed);
+    parsed = AiBriefingSchema.parse(JSON.parse(text.slice(jsonStart, jsonEnd + 1)));
   } catch {
     return null;
   }
+
+  const combined = [parsed.routeSummary, parsed.verdictExplanation].filter(Boolean).join(' ');
+  if (contradictsVerdict(combined, verdictResult.verdict)) {
+    console.warn('briefcast.ai_contradiction_discarded', { verdict: verdictResult.verdict });
+    return null;
+  }
+  return parsed;
 }
 
 module.exports = async function handler(req, res) {
@@ -366,7 +402,7 @@ module.exports = async function handler(req, res) {
 
     let ai = null;
     try {
-      ai = await maybeTranslateWithAnthropic(aiInput);
+      ai = await maybeTranslateWithGateway(aiInput, verdictResult);
       if (ai) console.log('briefcast.briefing.ai_used', { from: fromCode, to: toCode });
     } catch (aiError) {
       console.warn('briefcast.ai_translate_failed', aiError.message);
@@ -404,7 +440,7 @@ module.exports = async function handler(req, res) {
         departure: depCategory,
         destination: destCategory
       },
-      verdict: { ...verdictResult, minimums: STANDARD_MINIMUMS },
+      verdict: { ...verdictResult, minimums: STANDARD_MINIMUMS, explanation: ai?.verdictExplanation || null },
       factors,
       timeline,
       stale: isStale || undefined,
@@ -422,4 +458,4 @@ module.exports = async function handler(req, res) {
 };
 
 module.exports.handler = module.exports;
-module.exports._test = { summarizeHazards, summarizePireps, selectAfdText, plainRouteSummary, normalizeMetarTimestamps, buildFactors, tfrNearEndpoint };
+module.exports._test = { summarizeHazards, summarizePireps, selectAfdText, plainRouteSummary, normalizeMetarTimestamps, buildFactors, tfrNearEndpoint, contradictsVerdict };
