@@ -7,9 +7,75 @@ const {
   calculateFlightCategory,
   normalizeTimestamp,
   airportForCode,
-  checkRateLimit
+  checkRateLimit,
+  parseMetarFields
 } = require('./_utils');
+const { computeVerdict, parseWind, STANDARD_MINIMUMS } = require('../public/verdict.js');
 const { z } = require('zod');
+
+const TFR_RADIUS_DEG = 0.5; // ~30 nm
+
+function flattenCoords(geometry) {
+  const out = [];
+  function walk(node) {
+    if (!Array.isArray(node)) return;
+    if (node.length >= 2 && typeof node[0] === 'number' && typeof node[1] === 'number') {
+      out.push([node[0], node[1]]);
+      return;
+    }
+    node.forEach(walk);
+  }
+  if (geometry && geometry.coordinates) walk(geometry.coordinates);
+  return out;
+}
+
+function tfrNearEndpoint(features = [], airports = [], radiusDeg = TFR_RADIUS_DEG) {
+  const points = airports.filter(Boolean);
+  if (!points.length) return false;
+  return features.some((f) => {
+    const coords = flattenCoords(f && f.geometry);
+    return coords.some(([lon, lat]) =>
+      points.some((a) => Math.abs(a.lat - lat) <= radiusDeg && Math.abs(a.lon - lon) <= radiusDeg)
+    );
+  });
+}
+
+function endpointFactors(name, metar) {
+  const rawOb = metar?.rawOb || '';
+  const { ceilingFt, visibilitySm } = parseMetarFields(rawOb);
+  const { windKt, gustKt } = parseWind(rawOb);
+  return {
+    name,
+    ceilingFt,
+    visibilitySm,
+    windKt,
+    gustKt,
+    category: calculateFlightCategory(rawOb)
+  };
+}
+
+function isConvective(item) {
+  const s = `${item.airsigmetType || ''} ${item.hazard || ''} ${item.phenomenon || ''}`.toUpperCase();
+  return s.includes('CONVECTIVE') || s.includes('CONV') || /\bTS\b/.test(s);
+}
+
+function buildFactors({ fromCode, toCode, departureMetar, destinationMetar, sigmets = [], airmets = [], tfrFeatures = [], hazardsFetchOk = true, airportFrom, airportTo }) {
+  return {
+    departure: endpointFactors(fromCode, departureMetar),
+    destination: endpointFactors(toCode, destinationMetar),
+    hazards: {
+      convectiveSigmetOnRoute: sigmets.some(isConvective),
+      sigmetOnRoute: sigmets.some((s) => !isConvective(s)),
+      airmetOnRoute: airmets.length > 0,
+      tfrAtEndpoint: tfrNearEndpoint(tfrFeatures, [airportFrom, airportTo]),
+      hazardDataOk: hazardsFetchOk
+    },
+    dataOk: {
+      departureMetar: !!departureMetar?.rawOb,
+      destinationMetar: !!destinationMetar?.rawOb
+    }
+  };
+}
 
 const AiBriefingSchema = z.object({
   routeSummary: z.string().optional(),
@@ -264,6 +330,20 @@ module.exports = async function handler(req, res) {
 
     const afdExtract = selectAfdText(afdRaw);
 
+    const factors = buildFactors({
+      fromCode,
+      toCode,
+      departureMetar,
+      destinationMetar,
+      sigmets,
+      airmets,
+      tfrFeatures: tfrAlerts?.features || [],
+      hazardsFetchOk,
+      airportFrom,
+      airportTo
+    });
+    const verdictResult = computeVerdict(factors, STANDARD_MINIMUMS);
+
     const aiInput = {
       from: fromCode,
       to: toCode,
@@ -318,6 +398,8 @@ module.exports = async function handler(req, res) {
         departure: depCategory,
         destination: destCategory
       },
+      verdict: { ...verdictResult, minimums: STANDARD_MINIMUMS },
+      factors,
       stale: isStale || undefined,
       generatedAt: new Date().toISOString(),
       aiUsed: !!ai
@@ -333,4 +415,4 @@ module.exports = async function handler(req, res) {
 };
 
 module.exports.handler = module.exports;
-module.exports._test = { summarizeHazards, summarizePireps, selectAfdText, plainRouteSummary, normalizeMetarTimestamps };
+module.exports._test = { summarizeHazards, summarizePireps, selectAfdText, plainRouteSummary, normalizeMetarTimestamps, buildFactors, tfrNearEndpoint };
