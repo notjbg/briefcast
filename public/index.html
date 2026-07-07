@@ -13,36 +13,49 @@
   <meta name="twitter:title" content="BriefCast — Pre-Flight Weather Briefings in Plain English" />
   <meta name="twitter:description" content="Pre-flight weather briefings translated from aviation jargon to readable prose." />
   <meta name="twitter:image" content="/og-image.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet" />
   <style>
     :root {
       color-scheme: light;
-      --bg: #f7f6f3;
-      --card: #ffffff;
-      --ink: #171717;
-      --muted: #4d4d4d;
-      --line: #d9d4cb;
-      --accent: #064e3b;
-      --accent-soft: #e8f3ef;
-      --danger: #8b1d24;
+      /* paper, ink, stamp */
+      --paper: #FAFAF7;
+      --strip: #FFFFFF;
+      --ink: #16181B;
+      --ink-soft: #5C6166;
+      --rule: #D8DAD5;
+      --bay-blue: #2B5A8A;
+      --bay-blue-soft: rgba(43, 90, 138, 0.10);
+      --stamp-go: #1F7A3D;
+      --stamp-caution: #B07C10;
+      --stamp-nogo: #B3261E;
+      --stamp-insufficient: #5F6368;
+      /* flight-category palette — data domain, restyled in a later task */
       --vfr: #0f7a36;
       --mvfr: #0c4da2;
       --ifr: #b91c1c;
       --lifr: #a21caf;
-      --shadow: 0 10px 30px rgba(18, 24, 40, 0.08);
-      --radius: 14px;
+      /* type */
+      --font-display: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+      --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+      --font-body: "IBM Plex Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
     }
 
     [data-theme="dark"] {
       color-scheme: dark;
-      --bg: #111316;
-      --card: #1a1e24;
-      --ink: #f2f4f8;
-      --muted: #b4bdc8;
-      --line: #343b45;
-      --accent: #34d399;
-      --accent-soft: #0f2720;
-      --danger: #fca5a5;
-      --shadow: 0 12px 26px rgba(0, 0, 0, 0.28);
+      /* night ops */
+      --paper: #101214;
+      --strip: #17191C;
+      --ink: #E8E6E1;
+      --ink-soft: #9AA0A6;
+      --rule: #2A2D31;
+      --bay-blue: #7FAAD4;
+      --bay-blue-soft: rgba(127, 170, 212, 0.14);
+      --stamp-go: #34A853;
+      --stamp-caution: #F0A92E;
+      --stamp-nogo: #E5544B;
+      --stamp-insufficient: #9AA0A6;
     }
 
     [data-theme="dark"] .badge.vfr { background: #22c55e; }
@@ -50,150 +63,203 @@
     [data-theme="dark"] .badge.ifr { background: #f87171; }
     [data-theme="dark"] .badge.lifr { background: #e879f9; }
 
-    [data-theme="dark"] body {
-      background: radial-gradient(1200px 700px at 110% -10%, #1a2e28 0%, rgba(26, 46, 40, 0) 60%),
-        radial-gradient(1000px 600px at -20% -10%, #1e1a14 0%, rgba(30, 26, 20, 0) 55%),
-        var(--bg);
-    }
-
     * { box-sizing: border-box; }
 
     body {
       margin: 0;
-      font-family: Georgia, Cambria, "Times New Roman", Times, serif;
+      font-family: var(--font-body);
       color: var(--ink);
-      background:
-        radial-gradient(1200px 700px at 110% -10%, #d8e8e1 0%, rgba(216, 232, 225, 0) 60%),
-        radial-gradient(1000px 600px at -20% -10%, #e9e3d7 0%, rgba(233, 227, 215, 0) 55%),
-        var(--bg);
-      line-height: 1.45;
+      background: var(--paper);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
     }
 
     .container {
-      max-width: 1120px;
+      max-width: 760px;
       margin: 0 auto;
-      padding: 24px 18px 40px;
+      padding: 22px 20px 48px;
     }
 
-    .sans, button, input, select, .badge, .section-kicker, .footer-links, .meta {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-    }
+    .sans { font-family: var(--font-body); }
+    button, input, select, textarea { font-family: inherit; }
 
     .mono, pre, code {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-family: var(--font-mono);
     }
 
     header {
-      display: grid;
-      gap: 14px;
       margin-bottom: 22px;
     }
 
     .brand-row {
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
+      align-items: baseline;
+      gap: 14px;
       flex-wrap: wrap;
+      padding-bottom: 10px;
+      border-bottom: 2px solid var(--ink);
     }
 
     .brand {
-      font-size: clamp(1.7rem, 3vw, 2.4rem);
       margin: 0;
-      letter-spacing: -0.02em;
+      font-family: var(--font-display);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-size: clamp(1.9rem, 5vw, 2.6rem);
+      line-height: 1;
+      color: var(--ink);
+    }
+
+    .zulu-clock {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      letter-spacing: 0.04em;
+      color: var(--ink-soft);
+      margin-right: auto;
     }
 
     .subtitle {
-      margin: 0;
-      color: var(--muted);
-      max-width: 75ch;
+      margin: 12px 0 0;
+      color: var(--ink-soft);
+      max-width: 68ch;
+      font-size: 0.98rem;
     }
 
     .btn {
-      border: 1px solid var(--line);
-      background: var(--card);
+      border: 1px solid var(--rule);
+      background: var(--strip);
       color: var(--ink);
-      border-radius: 12px;
-      padding: 12px 18px;
+      border-radius: 0;
+      padding: 9px 16px;
       cursor: pointer;
-      transition: all 0.16s ease;
+      transition: background 0.14s ease, color 0.14s ease, border-color 0.14s ease;
       font-weight: 600;
+      font-size: 0.92rem;
     }
 
-    .btn:hover,
-    .btn:focus-visible {
-      transform: translateY(-1px);
-      box-shadow: var(--shadow);
-      border-color: var(--line);
+    .btn:hover {
+      border-color: var(--ink);
     }
 
     .btn:focus-visible,
-    input:focus-visible {
-      outline: 2px solid var(--accent);
+    input:focus-visible,
+    a:focus-visible,
+    summary:focus-visible {
+      outline: 2px solid var(--bay-blue);
       outline-offset: 2px;
     }
 
     .btn-primary {
-      background: var(--accent);
-      color: #fff;
-      border-color: transparent;
+      background: var(--ink);
+      color: var(--paper);
+      border-color: var(--ink);
     }
 
-    .btn-primary:hover,
-    .btn-primary:focus-visible {
-      filter: brightness(1.03);
-      border-color: transparent;
+    .btn-primary:hover {
+      background: var(--bay-blue);
+      border-color: var(--bay-blue);
+      color: var(--paper);
     }
 
-    .card {
-      background: var(--card);
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      padding: 16px;
+    #swapBtn {
+      border: 0;
+      background: transparent;
+      color: var(--ink-soft);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 6px;
+      font-size: 1.3rem;
+      line-height: 1;
+    }
+
+    #swapBtn:hover {
+      color: var(--bay-blue);
+    }
+
+    .card, .strip {
+      background: var(--strip);
+      border: 1px solid var(--rule);
+      border-left: 4px solid var(--strip-rail, var(--bay-blue));
+      border-radius: 0;
+      padding: 15px 18px;
       margin-bottom: 14px;
-      animation: fadeIn 250ms ease both;
+      animation: fadeIn 220ms ease both;
     }
+
+    .strip-rail { --strip-rail: var(--bay-blue); }
 
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(8px); }
+      from { opacity: 0; transform: translateY(6px); }
       to { opacity: 1; transform: translateY(0); }
     }
 
     .inputs {
       display: grid;
-      gap: 12px;
       grid-template-columns: 1fr auto 1fr auto;
-      align-items: end;
+      align-items: stretch;
+      border: 1px solid var(--rule);
+      margin-top: 4px;
     }
+
+    .inputs > * {
+      padding: 10px 14px;
+      border-right: 1px solid var(--rule);
+    }
+
+    .inputs > *:last-child { border-right: 0; }
 
     label {
       display: grid;
-      gap: 6px;
+      gap: 5px;
       font-weight: 600;
+    }
+
+    .strip-field-label {
+      font-family: var(--font-display);
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
     }
 
     input[type="text"],
     input[type="email"],
     input[type="datetime-local"] {
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      background: var(--card);
+      border: 0;
+      border-bottom: 2px solid var(--rule);
+      border-radius: 0;
+      background: transparent;
       color: var(--ink);
-      padding: 10px 12px;
+      padding: 6px 2px;
       font-size: 0.98rem;
       width: 100%;
     }
 
+    input[type="text"]:focus,
+    input[type="email"]:focus,
+    input[type="datetime-local"]:focus {
+      border-bottom-color: var(--bay-blue);
+    }
+
+    #fromInput, #toInput {
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 600;
+    }
+
     .input-hint {
       font-size: 0.82rem;
-      color: var(--muted);
+      color: var(--ink-soft);
       margin: 4px 0 0;
     }
 
     .meta {
       font-size: 0.8rem;
-      color: var(--muted);
+      color: var(--ink-soft);
       margin-top: 6px;
     }
 
@@ -203,19 +269,23 @@
       margin-top: 18px;
     }
 
-    .section-kicker {
+    .section-kicker, .strip-label {
       margin: 0 0 8px;
-      font-size: 0.74rem;
-      letter-spacing: 0.08em;
+      font-family: var(--font-display);
+      font-size: 0.82rem;
+      letter-spacing: 0.06em;
       text-transform: uppercase;
-      color: var(--muted);
-      font-weight: 700;
+      color: var(--ink-soft);
+      font-weight: 600;
     }
 
     h2 {
       margin: 0 0 10px;
-      font-size: 1.15rem;
-      letter-spacing: -0.01em;
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 1.3rem;
+      letter-spacing: 0.01em;
+      color: var(--ink);
     }
 
     .grid-2 {
@@ -242,10 +312,10 @@
 
     pre {
       margin: 0;
-      border: 1px solid var(--line);
-      background: rgba(0, 0, 0, 0.04);
-      border-radius: 10px;
-      padding: 10px;
+      border: 1px solid var(--rule);
+      background: rgba(0, 0, 0, 0.03);
+      border-radius: 0;
+      padding: 10px 12px;
       white-space: pre-wrap;
       overflow-wrap: anywhere;
       font-size: 0.86rem;
@@ -257,15 +327,15 @@
     }
 
     .status {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      font-family: var(--font-body);
       margin: 8px 0 0;
       min-height: 1.3rem;
-      color: var(--muted);
+      color: var(--ink-soft);
       font-size: 0.9rem;
     }
 
     .error {
-      color: var(--danger);
+      color: var(--stamp-nogo);
       font-weight: 600;
     }
 
@@ -275,13 +345,8 @@
     }
 
     .pro {
-      border: 1px solid #e0b861;
-      background: linear-gradient(145deg, #fff9eb, #fff3d5);
-    }
-
-    [data-theme="dark"] .pro {
-      border-color: #8c6f2e;
-      background: linear-gradient(145deg, #2e2617, #1f1911);
+      --strip-rail: var(--stamp-caution);
+      background: var(--strip);
     }
 
     .pro ul {
@@ -297,12 +362,22 @@
       font-size: 0.94rem;
     }
 
-    a { color: var(--accent); }
+    .site-footer {
+      margin-top: 28px;
+      padding-top: 14px;
+      border-top: 1px solid var(--rule);
+      color: var(--ink-soft);
+      font-size: 0.9rem;
+    }
+
+    .site-footer strong { color: var(--ink); }
+
+    a { color: var(--bay-blue); }
 
     .print-note {
-      border-left: 4px solid var(--accent);
+      border-left: 4px solid var(--bay-blue);
       padding-left: 10px;
-      color: var(--muted);
+      color: var(--ink-soft);
       font-size: 0.9rem;
       margin: 10px 0 0;
     }
@@ -320,7 +395,7 @@
 
     .loading-pulse {
       height: 4px;
-      background: var(--accent);
+      background: var(--bay-blue);
       border-radius: 2px;
       animation: pulse 1.5s ease-in-out infinite;
       margin-bottom: 12px;
@@ -334,30 +409,30 @@
     .combobox-list {
       position: absolute; top: 100%; left: 0; right: 0; z-index: 100;
       max-height: 240px; overflow-y: auto;
-      background: var(--card); border: 1px solid var(--line);
-      border-radius: 10px; box-shadow: var(--shadow);
-      margin-top: 4px; display: none;
+      background: var(--strip); border: 1px solid var(--rule);
+      border-radius: 0;
+      margin-top: 2px; display: none;
     }
     .combobox-list.open { display: block; }
     .combobox-option {
-      padding: 10px 12px; cursor: pointer;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      padding: 9px 12px; cursor: pointer;
+      font-family: var(--font-body);
       font-size: 0.9rem; display: flex; gap: 8px; align-items: baseline;
     }
     .combobox-option:hover, .combobox-option.active {
-      background: var(--accent-soft);
+      background: var(--bay-blue-soft);
     }
-    .combobox-option .code { font-weight: 700; min-width: 4ch; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-    .combobox-option .iata { color: var(--muted); min-width: 3ch; }
+    .combobox-option .code { font-weight: 600; min-width: 4ch; font-family: var(--font-mono); }
+    .combobox-option .iata { color: var(--ink-soft); min-width: 3ch; }
     .combobox-option .name { flex: 1; }
 
     .stale-banner {
       background: #fef3c7;
       border: 1px solid #f59e0b;
-      border-radius: var(--radius);
+      border-radius: 0;
       padding: 10px 14px;
       color: #92400e;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      font-family: var(--font-body);
       font-size: 0.9rem;
       font-weight: 600;
       margin-bottom: 14px;
@@ -369,7 +444,7 @@
     }
 
     .verdict-hero { border-width: 2px; }
-    .verdict-hero .verdict-word { font-size: 2.2rem; font-weight: 800; letter-spacing: 0.02em; margin: 4px 0 2px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .verdict-hero .verdict-word { font-size: 2.2rem; font-weight: 800; letter-spacing: 0.02em; margin: 4px 0 2px; font-family: var(--font-body); }
     .verdict-go { border-color: #1a7f37; } .verdict-go .verdict-word { color: #1a7f37; }
     .verdict-marginal { border-color: #b58105; } .verdict-marginal .verdict-word { color: #b58105; }
     .verdict-no-go { border-color: #c62828; } .verdict-no-go .verdict-word { color: #c62828; }
@@ -383,7 +458,7 @@
     [data-theme="dark"] .verdict-insufficient { border-color: #9ca3af; }
     [data-theme="dark"] .verdict-insufficient .verdict-word { color: #9ca3af; }
     .reason-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
-    .reason-chip { font-size: 0.8rem; padding: 3px 10px; border-radius: 999px; border: 1px solid currentColor; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .reason-chip { font-size: 0.8rem; padding: 3px 10px; border-radius: 999px; border: 1px solid currentColor; font-family: var(--font-body); }
     .reason-chip.sev-no-go, .reason-chip.sev-insufficient { color: #c62828; }
     .reason-chip.sev-marginal { color: #b58105; }
     .reason-chip.sev-ok { color: #1a7f37; }
@@ -391,7 +466,7 @@
     [data-theme="dark"] .reason-chip.sev-marginal { color: #fbbf24; }
     [data-theme="dark"] .reason-chip.sev-ok { color: #4ade80; }
     .timeline-row { display: flex; align-items: center; gap: 2px; margin: 6px 0; }
-    .timeline-label { font-size: 0.75rem; width: 46px; color: var(--muted); flex-shrink: 0; }
+    .timeline-label { font-size: 0.75rem; width: 46px; color: var(--ink-soft); flex-shrink: 0; }
     .timeline-cell { flex: 1; height: 22px; border-radius: 3px; position: relative; min-width: 14px; }
     .timeline-cell.v-go { background: #1a7f37; }
     .timeline-cell.v-marginal { background: #b58105; }
@@ -399,16 +474,16 @@
     [data-theme="dark"] .timeline-cell.v-go { background: #4ade80; }
     [data-theme="dark"] .timeline-cell.v-marginal { background: #fbbf24; }
     [data-theme="dark"] .timeline-cell.v-no-go { background: #f87171; }
-    .timeline-cell.v-empty { background: var(--line); opacity: 0.45; }
+    .timeline-cell.v-empty { background: var(--rule); opacity: 0.45; }
     [data-theme="dark"] .timeline-cell.v-empty { background: #374151; opacity: 0.6; }
     .timeline-hours { display: flex; gap: 2px; margin-left: 48px; }
-    .timeline-hour { flex: 1; font-size: 0.65rem; color: var(--muted); text-align: center; min-width: 14px; }
-    .advisory-line { font-size: 0.78rem; color: var(--muted); margin-top: 8px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .timeline-hour { flex: 1; font-size: 0.65rem; color: var(--ink-soft); text-align: center; min-width: 14px; }
+    .advisory-line { font-size: 0.78rem; color: var(--ink-soft); margin-top: 8px; font-family: var(--font-body); }
     .minimums-editor { display: none; gap: 8px; flex-wrap: wrap; margin-top: 10px; align-items: end; }
     .minimums-editor.open { display: flex; }
     .minimums-editor label { display: flex; flex-direction: column; font-size: 0.75rem; gap: 2px; }
-    .minimums-editor input { width: 90px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--ink); padding: 8px 10px; }
-    .minimums-tag { font-size: 0.78rem; color: var(--muted); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .minimums-editor input { width: 90px; border: 1px solid var(--rule); border-radius: 10px; background: var(--strip); color: var(--ink); padding: 8px 10px; }
+    .minimums-tag { font-size: 0.78rem; color: var(--ink-soft); font-family: var(--font-body); }
 
     .quick-look {
       display: flex;
@@ -420,29 +495,34 @@
       display: flex;
       align-items: center;
       gap: 6px;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      font-family: var(--font-body);
       font-size: 0.95rem;
     }
 
     .source-label {
       font-size: 0.72rem;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-      color: var(--muted);
+      font-family: var(--font-body);
+      color: var(--ink-soft);
       font-style: italic;
       margin-top: 4px;
     }
 
     .metar-age {
       font-size: 0.8rem;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-      color: var(--muted);
+      font-family: var(--font-body);
+      color: var(--ink-soft);
       margin-top: 4px;
     }
 
-    @media (max-width: 920px) {
+    @media (max-width: 720px) {
       .inputs {
         grid-template-columns: 1fr;
       }
+      .inputs > * {
+        border-right: 0;
+        border-bottom: 1px solid var(--rule);
+      }
+      .inputs > *:last-child { border-bottom: 0; }
       .grid-2 {
         grid-template-columns: 1fr;
       }
@@ -451,13 +531,13 @@
     @media print {
       body { background: #fff; }
       .no-print { display: none !important; }
-      .card { box-shadow: none; break-inside: avoid; }
+      .card, .strip { break-inside: avoid; }
       a { color: #000; text-decoration: none; }
       .footer-links { display: none; }
     }
 
     @media (prefers-reduced-motion: reduce) {
-      .card { animation: none; }
+      .card, .strip { animation: none; }
       .loading-pulse { animation: none; opacity: 0.6; width: 100%; }
     }
   </style>
@@ -509,29 +589,30 @@
     <header>
       <div class="brand-row">
         <h1 class="brand">BriefCast</h1>
-        <button class="btn no-print" id="themeToggle" type="button" aria-label="Toggle dark mode">Dark Mode</button>
+        <span class="zulu-clock mono" id="zuluClock" aria-label="Current Zulu time"></span>
+        <button class="btn no-print" id="themeToggle" type="button" aria-label="Toggle dark mode">Dark mode</button>
       </div>
       <p class="subtitle sans">Pre-flight weather briefings in plain English. Pull current conditions, forecasts, hazards, and pilot reports in one cockpit-friendly view.</p>
     </header>
 
     <section class="card no-print" aria-labelledby="briefing-form-title">
-      <p class="section-kicker">Flight Setup</p>
-      <h2 id="briefing-form-title">Build Your Briefing</h2>
+      <p class="section-kicker">Route</p>
+      <h2 id="briefing-form-title">Build your briefing</h2>
       <form id="briefingForm" novalidate>
         <div class="inputs">
           <label>
-            <span class="sans">From (ICAO or IATA)</span>
-            <input id="fromInput" type="text" name="from" autocomplete="off" required aria-required="true" aria-label="Departure airport" maxlength="5" />
+            <span class="strip-field-label">Dep</span>
+            <input id="fromInput" type="text" name="from" autocomplete="off" required aria-required="true" aria-label="Departure airport" maxlength="5" placeholder="KAUS" />
           </label>
-          <button class="btn" id="swapBtn" type="button" aria-label="Swap departure and destination">Swap</button>
+          <button class="btn" id="swapBtn" type="button" aria-label="Swap departure and destination">&#8646;</button>
           <label>
-            <span class="sans">To (ICAO or IATA)</span>
-            <input id="toInput" type="text" name="to" autocomplete="off" required aria-required="true" aria-label="Destination airport" maxlength="5" />
+            <span class="strip-field-label">Dest</span>
+            <input id="toInput" type="text" name="to" autocomplete="off" required aria-required="true" aria-label="Destination airport" maxlength="5" placeholder="KABQ" />
           </label>
-          <button class="btn btn-primary" id="briefBtn" type="submit" aria-label="Generate weather briefing">Generate Briefing</button>
+          <button class="btn btn-primary" id="briefBtn" type="submit" aria-label="Generate weather briefing">Generate briefing</button>
         </div>
         <label style="margin-top:12px;max-width:360px;">
-          <span class="sans">Planned Departure (optional)</span>
+          <span class="strip-field-label">Planned departure (optional)</span>
           <input id="departTimeInput" type="datetime-local" name="departTime" aria-label="Planned departure date and time" />
           <span class="input-hint sans">Helps the AI tailor the summary to your departure window. Does not change raw weather data.</span>
         </label>
@@ -542,7 +623,7 @@
     </section>
 
     <section id="results" class="results" aria-live="polite" aria-label="Weather briefing results">
-      <p class="sans" id="emptyState" style="color:var(--muted);text-align:center;padding:20px 0;">Enter departure and destination above to generate your briefing.</p>
+      <p class="sans" id="emptyState" style="color:var(--ink-soft);text-align:center;padding:20px 0;">Enter departure and destination above to generate your briefing.</p>
     </section>
 
     <section class="card pro no-print" aria-labelledby="pro-title">
@@ -555,17 +636,17 @@
         <li>Historical weather comparisons</li>
       </ul>
       <div class="footer-links">
-        <a class="btn btn-primary" href="https://plaincast.live" target="_blank" rel="noopener">Join Waitlist</a>
+        <a class="btn btn-primary" href="https://plaincast.live" target="_blank" rel="noopener">Join waitlist</a>
       </div>
       <form id="waitlistForm" class="sans" style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
         <label class="visually-hidden" for="waitlistEmail">Email</label>
         <input id="waitlistEmail" name="email" type="email" required placeholder="Enter your email" aria-label="Email for BriefCast Pro waitlist" style="max-width:320px;" />
-        <button class="btn" type="submit">Notify Me</button>
+        <button class="btn" type="submit">Notify me</button>
       </form>
       <p class="meta" id="waitlistStatus" aria-live="polite"></p>
     </section>
 
-    <footer class="card sans">
+    <footer class="site-footer sans">
       <strong>Built by Jonah Berg</strong>
       <div class="footer-links">
         <a href="https://theblueboard.co" target="_blank" rel="noopener">The Blue Board</a>
@@ -1450,6 +1531,7 @@
     async function onSubmit(event) {
       event.preventDefault();
       if (state.busy) return;
+      renderZuluClock();
 
       const fromCode = resolveAirport(els.fromInput.value);
       const toCode = resolveAirport(els.toInput.value);
@@ -1555,26 +1637,38 @@
       const saved = localStorage.getItem(key);
       if (saved === "dark") {
         document.documentElement.setAttribute("data-theme", "dark");
-        els.themeToggle.textContent = "Light Mode";
+        els.themeToggle.textContent = "Light mode";
       }
       els.themeToggle.addEventListener("click", () => {
         const current = document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
         const next = current === "dark" ? "light" : "dark";
         if (next === "dark") {
           document.documentElement.setAttribute("data-theme", "dark");
-          els.themeToggle.textContent = "Light Mode";
+          els.themeToggle.textContent = "Light mode";
         } else {
           document.documentElement.removeAttribute("data-theme");
-          els.themeToggle.textContent = "Dark Mode";
+          els.themeToggle.textContent = "Dark mode";
         }
         localStorage.setItem(key, next);
       });
+    }
+
+    const ZULU_MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+    function renderZuluClock() {
+      const el = document.getElementById("zuluClock");
+      if (!el) return;
+      const d = new Date();
+      const hh = String(d.getUTCHours()).padStart(2, "0");
+      const mm = String(d.getUTCMinutes()).padStart(2, "0");
+      const day = String(d.getUTCDate()).padStart(2, "0");
+      el.textContent = `${hh}${mm}Z · ${day} ${ZULU_MONTHS[d.getUTCMonth()]}`;
     }
 
     addAirportLookup();
     createCombobox(els.fromInput);
     createCombobox(els.toInput);
     setupTheme();
+    renderZuluClock();
 
     els.briefingForm.addEventListener("submit", onSubmit);
     els.swapBtn.addEventListener("click", onSwap);
