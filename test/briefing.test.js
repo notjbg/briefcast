@@ -164,6 +164,20 @@ describe('buildFactors', () => {
     expect(f.hazards.airmetOnRoute).toBe(true);
   });
 
+  it('trips convectiveSigmetOnRoute for a live-API-casing item routed through splitAirsigmets', () => {
+    // Regression: live AWC responses use airSigmetType (capital S). The old inline
+    // split filter only checked airsigmetType, so real convective SIGMETs fell into
+    // neither array and convectiveSigmetOnRoute was silently false in production.
+    const { splitAirsigmets } = require('../api/_geo');
+    const { sigmets, airmets } = splitAirsigmets([
+      { airSigmetType: 'SIGMET', hazard: 'CONVECTIVE' },
+      { airSigmetType: 'AIRMET', hazard: 'ICE' }
+    ]);
+    const f = buildFactors({ ...base, sigmets, airmets });
+    expect(f.hazards.convectiveSigmetOnRoute).toBe(true);
+    expect(f.hazards.airmetOnRoute).toBe(true);
+  });
+
   it('propagates hazard fetch failure', () => {
     const f = buildFactors({ ...base, hazardsFetchOk: false });
     expect(f.hazards.hazardDataOk).toBe(false);

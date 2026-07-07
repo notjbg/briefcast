@@ -59,6 +59,34 @@ function greatCircle(from, to, n = 32) {
   return points;
 }
 
+// Classify an airsigmet item as 'SIGMET' | 'AIRMET' | null. Live AWC responses
+// use `airSigmetType` (capital S); older/other shapes use `airsigmetType`.
+// The old inline filter in briefing.js only checked the lowercase key, so real
+// convective SIGMETs (airSigmetType:'SIGMET', hazard:'CONVECTIVE') matched
+// neither array and were silently dropped in production.
+function airsigmetKind(item) {
+  if (!item) return null;
+  const s = String(item.airSigmetType || item.airsigmetType || item.hazard || '').toUpperCase();
+  if (s.includes('SIGMET')) return 'SIGMET';
+  if (s.includes('AIRMET')) return 'AIRMET';
+  return null;
+}
+
+// Split a raw airsigmet API response into { sigmets, airmets }. Non-array input
+// yields empty arrays; items matching neither kind are dropped.
+function splitAirsigmets(raw) {
+  const sigmets = [];
+  const airmets = [];
+  if (Array.isArray(raw)) {
+    for (const item of raw) {
+      const kind = airsigmetKind(item);
+      if (kind === 'SIGMET') sigmets.push(item);
+      else if (kind === 'AIRMET') airmets.push(item);
+    }
+  }
+  return { sigmets, airmets };
+}
+
 // Extract a polygon ring from an airsigmet item. Real AWC airsigmet responses
 // carry geometry as `coords: [{lat, lon}, ...]`. Returns [[lat, lon], ...] with
 // only finite points, or null when geometry is missing/malformed. Never throws.
@@ -70,7 +98,9 @@ function parseHazardCoords(item) {
       ring.push([pt.lat, pt.lon]);
     }
   }
-  return ring.length >= 2 ? ring : null;
+  // A drawable polygon needs at least 3 vertices; 1-2 points is degenerate
+  // geometry (a dot or a line), so treat it as malformed and skip the item.
+  return ring.length >= 3 ? ring : null;
 }
 
 // Assemble the map payload consumed by the frontend route map (Task 5).
@@ -96,4 +126,4 @@ function buildMapPayload({ airportFrom, airportTo, fromCode, toCode, depCategory
   };
 }
 
-module.exports = { greatCircle, isConvective, parseHazardCoords, buildMapPayload };
+module.exports = { greatCircle, isConvective, parseHazardCoords, buildMapPayload, airsigmetKind, splitAirsigmets };

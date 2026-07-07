@@ -12,7 +12,7 @@ const {
 } = require('./_utils');
 const { computeVerdict, parseWind, STANDARD_MINIMUMS } = require('../public/verdict.js');
 const { buildTimeline } = require('./_timeline');
-const { isConvective, buildMapPayload } = require('./_geo');
+const { isConvective, buildMapPayload, splitAirsigmets } = require('./_geo');
 const { z } = require('zod');
 
 const TFR_RADIUS_DEG = 0.5; // ~30 nm
@@ -348,12 +348,10 @@ module.exports = async function handler(req, res) {
     const depCategory = calculateFlightCategory(departureMetar.rawOb || '');
     const destCategory = calculateFlightCategory(destinationMetar.rawOb || '');
 
-    const sigmets = Array.isArray(airsigmetsRaw)
-      ? airsigmetsRaw.filter((item) => String(item.airsigmetType || item.hazard || '').toUpperCase().includes('SIGMET'))
-      : [];
-    const airmets = Array.isArray(airsigmetsRaw)
-      ? airsigmetsRaw.filter((item) => String(item.airsigmetType || item.hazard || '').toUpperCase().includes('AIRMET'))
-      : [];
+    // splitAirsigmets handles the live API's `airSigmetType` (capital S) casing;
+    // the old inline filter only checked lowercase and silently dropped real
+    // convective SIGMETs from both arrays.
+    const { sigmets, airmets } = splitAirsigmets(airsigmetsRaw);
     const tfrs = (tfrAlerts?.features || []).map((f) => ({
       id: f?.properties?.id,
       notamId: f?.properties?.event,

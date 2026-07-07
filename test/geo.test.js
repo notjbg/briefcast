@@ -1,5 +1,5 @@
 const { describe, it, expect } = require('bun:test');
-const { greatCircle, isConvective, parseHazardCoords, buildMapPayload } = require('../api/_geo');
+const { greatCircle, isConvective, parseHazardCoords, buildMapPayload, airsigmetKind, splitAirsigmets } = require('../api/_geo');
 
 // A real AWC airsigmet item shape (coords: [{lat, lon}, ...]), copied from a
 // live https://aviationweather.gov/api/data/airsigmet?format=json response.
@@ -66,6 +66,53 @@ describe('isConvective', () => {
   });
 });
 
+describe('airsigmetKind', () => {
+  it('reads the live-API casing airSigmetType (capital S)', () => {
+    expect(airsigmetKind({ airSigmetType: 'SIGMET', hazard: 'CONVECTIVE' })).toBe('SIGMET');
+    expect(airsigmetKind({ airSigmetType: 'AIRMET', hazard: 'ICE' })).toBe('AIRMET');
+  });
+
+  it('reads legacy lowercase airsigmetType', () => {
+    expect(airsigmetKind({ airsigmetType: 'SIGMET' })).toBe('SIGMET');
+    expect(airsigmetKind({ airsigmetType: 'AIRMET' })).toBe('AIRMET');
+  });
+
+  it('falls back to hazard text, else null', () => {
+    expect(airsigmetKind({ hazard: 'SIGMET TURB' })).toBe('SIGMET');
+    expect(airsigmetKind({ hazard: 'AIRMET IFR' })).toBe('AIRMET');
+    expect(airsigmetKind({ hazard: 'CONVECTIVE' })).toBeNull();
+    expect(airsigmetKind({})).toBeNull();
+    expect(airsigmetKind(null)).toBeNull();
+  });
+});
+
+describe('splitAirsigmets', () => {
+  it('routes real-casing convective SIGMETs into sigmets (prod drop bug)', () => {
+    const { sigmets, airmets } = splitAirsigmets([
+      { airSigmetType: 'SIGMET', hazard: 'CONVECTIVE' },
+      { airSigmetType: 'AIRMET', hazard: 'ICE' }
+    ]);
+    expect(sigmets).toHaveLength(1);
+    expect(sigmets[0].hazard).toBe('CONVECTIVE');
+    expect(airmets).toHaveLength(1);
+    expect(airmets[0].hazard).toBe('ICE');
+  });
+
+  it('handles legacy lowercase casing and non-array input', () => {
+    const { sigmets, airmets } = splitAirsigmets([{ airsigmetType: 'SIGMET' }, { airsigmetType: 'AIRMET' }]);
+    expect(sigmets).toHaveLength(1);
+    expect(airmets).toHaveLength(1);
+    expect(splitAirsigmets('nope')).toEqual({ sigmets: [], airmets: [] });
+    expect(splitAirsigmets(undefined)).toEqual({ sigmets: [], airmets: [] });
+  });
+
+  it('drops items matching neither kind', () => {
+    const { sigmets, airmets } = splitAirsigmets([{ hazard: 'MTN OBSCN' }]);
+    expect(sigmets).toHaveLength(0);
+    expect(airmets).toHaveLength(0);
+  });
+});
+
 describe('parseHazardCoords', () => {
   it('parses the real airsigmet coords shape', () => {
     const ring = parseHazardCoords(REAL_SIGMET);
@@ -78,6 +125,10 @@ describe('parseHazardCoords', () => {
     expect(parseHazardCoords({ coords: null })).toBeNull();
     expect(parseHazardCoords({ coords: [{ lat: 'x', lon: 1 }] })).toBeNull();
     expect(parseHazardCoords({ coords: [{ lat: 40 }] })).toBeNull();
+  });
+
+  it('rejects degenerate rings with fewer than 3 points (not a polygon)', () => {
+    expect(parseHazardCoords({ coords: [{ lat: 40, lon: -80 }, { lat: 41, lon: -81 }] })).toBeNull();
   });
 });
 
@@ -116,8 +167,8 @@ describe('buildMapPayload', () => {
   it('tags non-convective sigmet and airmet kinds', () => {
     const m = buildMapPayload({
       ...base,
-      sigmets: [{ hazard: 'ICE', coords: [{ lat: 40, lon: -80 }, { lat: 41, lon: -81 }] }],
-      airmets: [{ hazard: 'IFR', coords: [{ lat: 39, lon: -79 }, { lat: 38, lon: -78 }] }]
+      sigmets: [{ hazard: 'ICE', coords: [{ lat: 40, lon: -80 }, { lat: 41, lon: -81 }, { lat: 40.5, lon: -82 }] }],
+      airmets: [{ hazard: 'IFR', coords: [{ lat: 39, lon: -79 }, { lat: 38, lon: -78 }, { lat: 37.5, lon: -79.5 }] }]
     });
     expect(m.hazardPolygons.map((h) => h.kind)).toEqual(['sigmet', 'airmet']);
   });
