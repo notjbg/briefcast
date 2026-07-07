@@ -1,6 +1,6 @@
-// Pure, dependency-free helpers for the OG share-card endpoint (api/og.jsx).
+// Pure, dependency-free helpers for the OG share-card endpoint (api/og.js).
 // Extracted to CJS so they are unit-testable without the edge runtime that
-// @vercel/og requires. api/og.jsx imports these — this file is the single
+// @vercel/og requires. api/og.js imports these — this file is the single
 // source of truth for validation + card-data selection.
 
 // Verdict → stamp color. Hexes are the LIGHT-mode stamp tokens from the design

@@ -97,7 +97,8 @@ function summarizeHazards(sigmets = [], airmets = [], tfrs = []) {
   sigmets.slice(0, 5).forEach((s) => {
     const id = s.airSigmetId || s.rawSigmet || s.hazard || 'SIGMET';
     const hazard = s.hazard || s.phenomenon || 'hazard';
-    const valid = s.validTimeFrom || s.validTimeTo || s.obsTime || '';
+    const validIso = normalizeTimestamp(s.validTimeFrom || s.validTimeTo || s.obsTime);
+    const valid = validIso ? `valid from ${validIso.slice(11, 16)}Z` : '';
     out.push(`SIGMET ${id}: ${hazard}${valid ? ` (${valid})` : ''}`);
   });
 

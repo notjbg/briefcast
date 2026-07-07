@@ -4,8 +4,6 @@
   "private": true,
   "description": "BriefCast pre-flight weather briefings in plain English",
   "scripts": {
-    "dev": "vercel dev",
-    "start": "vercel dev",
     "test": "bun test"
   },
   "license": "MIT",

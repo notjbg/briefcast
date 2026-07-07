@@ -1414,9 +1414,12 @@
       const cloudMap = { FEW: "few", SCT: "scattered", BKN: "broken", OVC: "overcast", VV: "vertical visibility" };
       const clouds = cloudTokens.length
         ? cloudTokens.map((c) => {
-            const layer = c.slice(0, 3);
-            const height = Number(c.slice(3)) * 100;
-            return `${cloudMap[layer] || layer} clouds at ${height.toLocaleString()} ft`;
+            const m = c.match(/^(FEW|SCT|BKN|OVC|VV)(\d{3})/);
+            if (!m) return c;
+            const height = Number(m[2]) * 100;
+            const suffix = c.slice(m[0].length); // CB/TCU etc.
+            const kind = suffix === "CB" ? " (cumulonimbus)" : suffix === "TCU" ? " (towering cumulus)" : "";
+            return `${cloudMap[m[1]] || m[1]} clouds at ${height.toLocaleString()} ft${kind}`;
           }).join(", ")
         : "No significant cloud layer reported";
 
