@@ -31,11 +31,6 @@
       --stamp-caution: #B07C10;
       --stamp-nogo: #B3261E;
       --stamp-insufficient: #5F6368;
-      /* flight-category palette — data domain, restyled in a later task */
-      --vfr: #0f7a36;
-      --mvfr: #0c4da2;
-      --ifr: #b91c1c;
-      --lifr: #a21caf;
       /* type */
       --font-display: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
       --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -57,11 +52,6 @@
       --stamp-nogo: #E5544B;
       --stamp-insufficient: #9AA0A6;
     }
-
-    [data-theme="dark"] .badge.vfr { background: #22c55e; }
-    [data-theme="dark"] .badge.mvfr { background: #60a5fa; }
-    [data-theme="dark"] .badge.ifr { background: #f87171; }
-    [data-theme="dark"] .badge.lifr { background: #e879f9; }
 
     * { box-sizing: border-box; }
 
@@ -189,6 +179,10 @@
     }
 
     .strip-rail { --strip-rail: var(--bay-blue); }
+    /* Severity rails — verdict-bearing strips take stamp colors; quiet strips
+       drop to a plain rule so only strips with something to say carry color. */
+    .rail-caution { --strip-rail: var(--stamp-caution); }
+    .rail-quiet { --strip-rail: var(--rule); }
 
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(6px); }
@@ -294,26 +288,37 @@
       gap: 14px;
     }
 
+    /* Flight-category chips — small square chips, mono, token-table colors only.
+       Aviation mapping: VFR → --stamp-go, MVFR → --bay-blue, IFR → --stamp-nogo.
+       LIFR magenta is not in the token table, so LIFR also uses --stamp-nogo —
+       the chip text disambiguates, and an offset second ring marks it as the
+       worse condition. Text color is --strip: paper-white on light fills,
+       night-ops ink on the brightened dark-theme fills. */
     .badge {
       display: inline-flex;
       align-items: center;
-      border-radius: 999px;
-      padding: 4px 10px;
-      font-size: 0.8rem;
-      font-weight: 700;
-      letter-spacing: 0.02em;
-      color: #fff;
+      border-radius: 0;
+      padding: 2px 8px;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      color: var(--strip);
     }
 
-    .badge.vfr { background: var(--vfr); }
-    .badge.mvfr { background: var(--mvfr); }
-    .badge.ifr { background: var(--ifr); }
-    .badge.lifr { background: var(--lifr); }
+    .badge.vfr { background: var(--stamp-go); }
+    .badge.mvfr { background: var(--bay-blue); }
+    .badge.ifr { background: var(--stamp-nogo); }
+    .badge.lifr { background: var(--stamp-nogo); outline: 1px solid var(--stamp-nogo); outline-offset: 2px; }
 
+    /* Raw teleprinter blocks — mono on a faint ruled inset: --paper ground,
+       hairline rules top and bottom, no side chrome. */
     pre {
-      margin: 0;
-      border: 1px solid var(--rule);
-      background: rgba(0, 0, 0, 0.03);
+      margin: 8px 0 0;
+      border: 0;
+      border-top: 1px solid var(--rule);
+      border-bottom: 1px solid var(--rule);
+      background: var(--paper);
       border-radius: 0;
       padding: 10px 12px;
       white-space: pre-wrap;
@@ -322,8 +327,10 @@
       line-height: 1.35;
     }
 
-    [data-theme="dark"] pre {
-      background: rgba(255, 255, 255, 0.08);
+    /* Decoded English — Plex Sans directly beneath its raw block. */
+    .decoded {
+      font-family: var(--font-body);
+      margin: 8px 0 0;
     }
 
     .status {
@@ -486,19 +493,19 @@
       line-height: 1.5;
     }
     .reason-chip::before { content: "\25B8\00a0"; }
+    /* Timeline bay — sharp square-cut cells, mono hour labels, stamp fills.
+       Uncovered hours read as diagonal hatch (blank paper), not a gray block. */
     .timeline-row { display: flex; align-items: center; gap: 2px; margin: 6px 0; }
-    .timeline-label { font-size: 0.75rem; width: 46px; color: var(--ink-soft); flex-shrink: 0; }
-    .timeline-cell { flex: 1; height: 22px; border-radius: 3px; position: relative; min-width: 14px; }
-    .timeline-cell.v-go { background: #1a7f37; }
-    .timeline-cell.v-marginal { background: #b58105; }
-    .timeline-cell.v-no-go { background: #c62828; }
-    [data-theme="dark"] .timeline-cell.v-go { background: #4ade80; }
-    [data-theme="dark"] .timeline-cell.v-marginal { background: #fbbf24; }
-    [data-theme="dark"] .timeline-cell.v-no-go { background: #f87171; }
-    .timeline-cell.v-empty { background: var(--rule); opacity: 0.45; }
-    [data-theme="dark"] .timeline-cell.v-empty { background: #374151; opacity: 0.6; }
+    .timeline-label { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.04em; width: 46px; color: var(--ink-soft); flex-shrink: 0; }
+    .timeline-cell { flex: 1; height: 22px; border-radius: 0; position: relative; min-width: 14px; }
+    .timeline-cell.v-go { background: var(--stamp-go); }
+    .timeline-cell.v-marginal { background: var(--stamp-caution); }
+    .timeline-cell.v-no-go { background: var(--stamp-nogo); }
+    .timeline-cell.v-empty {
+      background: repeating-linear-gradient(45deg, var(--rule) 0, var(--rule) 3px, transparent 3px, transparent 8px);
+    }
     .timeline-hours { display: flex; gap: 2px; margin-left: 48px; }
-    .timeline-hour { flex: 1; font-size: 0.65rem; color: var(--ink-soft); text-align: center; min-width: 14px; }
+    .timeline-hour { flex: 1; font-family: var(--font-mono); font-size: 0.65rem; color: var(--ink-soft); text-align: center; min-width: 14px; }
     .advisory-line { font-size: 0.78rem; color: var(--ink-soft); margin-top: 8px; font-family: var(--font-body); }
     .minimums-editor { display: none; gap: 8px; flex-wrap: wrap; margin-top: 10px; align-items: end; }
     .minimums-editor.open { display: flex; }
@@ -557,11 +564,45 @@
     }
 
     @media print {
-      body { background: #fff; }
-      .no-print { display: none !important; }
-      .card, .strip { break-inside: avoid; }
-      a { color: #000; text-decoration: none; }
-      .footer-links { display: none; }
+      /* Print is always day-ops paper, whatever theme the screen was in.
+         Values are the light token table (paper forced to strip-white). */
+      :root, [data-theme="dark"] {
+        --paper: #FFFFFF;
+        --strip: #FFFFFF;
+        --ink: #16181B;
+        --ink-soft: #5C6166;
+        --rule: #D8DAD5;
+        --bay-blue: #2B5A8A;
+        --bay-blue-soft: rgba(43, 90, 138, 0.10);
+        --stamp-go: #1F7A3D;
+        --stamp-caution: #B07C10;
+        --stamp-nogo: #B3261E;
+        --stamp-insufficient: #5F6368;
+      }
+      body { background: #FFFFFF; font-size: 0.92rem; }
+      .no-print, .footer-links, .combobox-list, .loading-pulse { display: none !important; }
+      .container { max-width: none; padding: 0; }
+      /* Strips print as strips: borders and rails kept, compacted to fit
+         a typical briefing on ~2 pages. */
+      .card, .strip {
+        break-inside: avoid;
+        border: 1px solid var(--rule);
+        border-left: 4px solid var(--strip-rail, var(--bay-blue));
+        padding: 10px 14px;
+        margin-bottom: 10px;
+        animation: none;
+      }
+      /* Stamp, rails, category chips, and timeline cells must keep their ink. */
+      .card, .strip, .stamp, .badge, .timeline-cell, .stale-banner {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .stamp-press { animation: none; }
+      .stamp { font-size: 2rem; }
+      /* Stale banner prints in its day colors even from dark mode. */
+      [data-theme="dark"] .stale-banner { background: #fef3c7; border-color: #f59e0b; color: #92400e; }
+      pre { font-size: 0.78rem; }
+      a { color: var(--ink); text-decoration: none; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -1433,19 +1474,13 @@
           <p class="section-kicker">${escapeHtml(title)}</p>
           <h2>${escapeHtml(airport?.name || "Unknown Airport")} (${escapeHtml(airport?.icao || "----")})</h2>
           ${metarAgeHtml}
-          <p>${withGlossaryTerms(metar?.translation || `Current ${"METAR"}: ${metarDecoded.wind}. ${metarDecoded.visibility}. ${metarDecoded.clouds}. ${metarDecoded.tempDew}. ${metarDecoded.altimeter}. Weather: ${metarDecoded.weather}.`)}</p>
+          <pre class="mono" aria-label="Raw METAR">${escapeHtml(metarDecoded.raw || "No METAR available")}</pre>
+          <p class="decoded">${withGlossaryTerms(metar?.translation || `Current ${"METAR"}: ${metarDecoded.wind}. ${metarDecoded.visibility}. ${metarDecoded.clouds}. ${metarDecoded.tempDew}. ${metarDecoded.altimeter}. Weather: ${metarDecoded.weather}.`)}</p>
           ${sourceLabel}
-          <details>
-            <summary class="sans">Raw METAR</summary>
-            <pre class="mono">${escapeHtml(metarDecoded.raw || "No METAR available")}</pre>
-          </details>
           <h3 class="sans" style="margin:14px 0 8px;font-size:0.98rem;">TAF Outlook</h3>
-          <p>${withGlossaryTerms(taf?.translation || "Forecast periods decoded below.")}</p>
+          <pre class="mono" aria-label="Raw TAF">${escapeHtml(tafDecoded.raw || "No TAF available")}</pre>
+          <p class="decoded">${withGlossaryTerms(taf?.translation || "Forecast periods decoded below.")}</p>
           <ul class="sans">${tafPeriods}</ul>
-          <details>
-            <summary class="sans">Raw TAF</summary>
-            <pre class="mono">${escapeHtml(tafDecoded.raw || "No TAF available")}</pre>
-          </details>
         </article>
       `;
     }
@@ -1530,12 +1565,12 @@
             <pre class="mono">${escapeHtml(data.afd?.raw || "No raw AFD excerpt available.")}</pre>
           </details>
         </section>
-        <section class="card">
+        <section class="card ${hazards.length ? 'rail-caution' : 'rail-quiet'}">
           <p class="section-kicker">Hazards & Alerts</p>
           <h2>Active SIGMETs, AIRMETs, and TFRs</h2>
           <ul class="sans">${hazardHtml}</ul>
         </section>
-        <section class="card">
+        <section class="card ${pireps.length ? '' : 'rail-quiet'}">
           <p class="section-kicker">PIREPs</p>
           <h2>Recent Pilot Reports</h2>
           <ul class="sans">${pirepHtml}</ul>
