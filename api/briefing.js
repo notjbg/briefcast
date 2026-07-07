@@ -174,12 +174,13 @@ function contradictsVerdict(text, verdict) {
 
 let _apiKeyWarned = false;
 
-async function maybeTranslateWithGateway(payload, verdictResult) {
-  // OIDC token is auto-injected and auto-refreshed on Vercel deployments; explicit key wins if set.
-  const apiKey = process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN;
+async function maybeTranslateWithGateway(payload, verdictResult, oidcToken) {
+  // Auth resolution: explicit key > OIDC env (build/local) > OIDC request header (Vercel runtime).
+  // Vercel delivers the runtime OIDC token via the x-vercel-oidc-token request header, not env.
+  const apiKey = process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN || oidcToken || null;
   if (!apiKey) {
     if (!_apiKeyWarned) {
-      console.warn('briefcast.config.missing_key', 'No AI_GATEWAY_API_KEY or VERCEL_OIDC_TOKEN — AI narratives disabled. Deterministic verdict still active.');
+      console.warn('briefcast.config.missing_key', 'No AI_GATEWAY_API_KEY, VERCEL_OIDC_TOKEN, or x-vercel-oidc-token — AI narratives disabled. Deterministic verdict still active.');
       _apiKeyWarned = true;
     }
     return null;
@@ -403,7 +404,7 @@ module.exports = async function handler(req, res) {
 
     let ai = null;
     try {
-      ai = await maybeTranslateWithGateway(aiInput, verdictResult);
+      ai = await maybeTranslateWithGateway(aiInput, verdictResult, req.headers['x-vercel-oidc-token']);
       if (ai) console.log('briefcast.briefing.ai_used', { from: fromCode, to: toCode });
     } catch (aiError) {
       console.warn('briefcast.ai_translate_failed', aiError.message);
