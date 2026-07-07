@@ -520,6 +520,28 @@
     .minimums-editor input:focus { outline: none; border-bottom-color: var(--bay-blue); }
     .minimums-tag { font-size: 0.78rem; color: var(--ink-soft); font-family: var(--font-body); }
 
+    /* Route map strip — Leaflet map on a paper strip. Tiles are desaturated so
+       the category-colored endpoints and hazard fills carry the meaning. */
+    .route-map {
+      height: 300px;
+      width: 100%;
+      border: 1px solid var(--rule);
+      border-radius: 0;
+      background: var(--strip);
+    }
+    .route-map .leaflet-tile-pane { filter: grayscale(1) contrast(1.05); }
+    [data-theme="dark"] .route-map .leaflet-tile-pane {
+      filter: invert(1) hue-rotate(180deg) brightness(0.9) grayscale(0.4);
+    }
+    .route-map .leaflet-container { font-family: var(--font-body); background: var(--strip); }
+    .map-caption { margin: 8px 0 0; font-size: 0.78rem; color: var(--ink-soft); font-family: var(--font-body); }
+    .leaflet-tooltip.icao-tip {
+      font-family: var(--font-mono); font-size: 0.72rem; font-weight: 600; letter-spacing: 0.04em;
+      padding: 1px 6px; color: var(--ink); background: var(--strip);
+      border: 1px solid var(--rule); border-radius: 0; box-shadow: none;
+    }
+    .leaflet-tooltip.icao-tip::before { display: none; }
+
     .quick-look {
       display: flex;
       gap: 18px;
@@ -1530,10 +1552,18 @@
         staleHtml = `<div class="stale-banner">Warning: Some weather data may be stale. Verify with official sources before flight.</div>`;
       }
 
+      const mapStripHtml = data.map ? `
+        <section class="card route-strip">
+          <p class="strip-label">ROUTE</p>
+          <div id="routeMap" class="route-map" role="img" aria-label="Route map from ${escapeHtml(fromCode)} to ${escapeHtml(toCode)}"></div>
+          <p class="map-caption">Great-circle track · hazards shown when reported</p>
+        </section>` : "";
+
       els.results.innerHTML = `
         ${staleHtml}
         ${renderVerdictHero(data)}
         ${renderTimeline(data)}
+        ${mapStripHtml}
         <section class="card">
           <p class="section-kicker">Quick Look</p>
           <h2>${escapeHtml(fromCode)} / ${escapeHtml(toCode)}</h2>
@@ -1582,6 +1612,105 @@
         </section>
       `;
       wireVerdictHero(data);
+      if (data.map) initRouteMap(data.map);
+    }
+
+    // --- Route map (Leaflet, lazy-loaded from CDN on first briefing with map data) ---
+    let routeMapInstance = null;
+    let leafletReady = null;
+    const LEAFLET_VERSION = "1.9.4";
+
+    function ensureLeaflet() {
+      if (window.L) return Promise.resolve(window.L);
+      if (leafletReady) return leafletReady;
+      leafletReady = new Promise((resolve, reject) => {
+        const link = document.createElement("link");
+        link.rel = "stylesheet";
+        link.href = `https://unpkg.com/leaflet@${LEAFLET_VERSION}/dist/leaflet.css`;
+        link.integrity = "sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H";
+        link.crossOrigin = "";
+        document.head.appendChild(link);
+        const script = document.createElement("script");
+        script.src = `https://unpkg.com/leaflet@${LEAFLET_VERSION}/dist/leaflet.js`;
+        script.integrity = "sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH";
+        script.crossOrigin = "";
+        script.onload = () => (window.L ? resolve(window.L) : reject(new Error("Leaflet global missing after load")));
+        script.onerror = () => reject(new Error("Leaflet CDN failed to load"));
+        document.head.appendChild(script);
+      });
+      return leafletReady;
+    }
+
+    function categoryColor(category, styles) {
+      switch ((category || "UNKNOWN").toUpperCase()) {
+        case "VFR": return styles.getPropertyValue("--stamp-go").trim();
+        case "MVFR": return styles.getPropertyValue("--bay-blue").trim();
+        case "IFR":
+        case "LIFR": return styles.getPropertyValue("--stamp-nogo").trim();
+        default: return styles.getPropertyValue("--ink-soft").trim();
+      }
+    }
+
+    function initRouteMap(mapData) {
+      if (!mapData) return;
+      ensureLeaflet().then((L) => {
+        const el = document.getElementById("routeMap");
+        if (!el) return; // results re-rendered before the CDN resolved
+        if (routeMapInstance) {
+          try { routeMapInstance.remove(); } catch {}
+          routeMapInstance = null;
+        }
+        const map = L.map(el, { scrollWheelZoom: false, attributionControl: true });
+        routeMapInstance = map;
+
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+          maxZoom: 18,
+        }).addTo(map);
+
+        const styles = getComputedStyle(document.documentElement);
+        const cautionColor = styles.getPropertyValue("--stamp-caution").trim();
+        const nogoColor = styles.getPropertyValue("--stamp-nogo").trim();
+        const blue = styles.getPropertyValue("--bay-blue").trim();
+
+        (mapData.hazardPolygons || []).forEach((poly) => {
+          if (!poly || !Array.isArray(poly.coords) || poly.coords.length < 3) return;
+          const fill = poly.kind === "convective" ? nogoColor : cautionColor;
+          L.polygon(poly.coords, { color: fill, weight: 1, fillColor: fill, fillOpacity: 0.18 }).addTo(map);
+        });
+
+        const route = Array.isArray(mapData.route) && mapData.route.length >= 2 ? mapData.route : null;
+        if (route) {
+          L.polyline(route, { color: blue, weight: 2, dashArray: "6 6", opacity: 0.9 }).addTo(map);
+        }
+
+        const endpoints = [mapData.from, mapData.to].filter(
+          (e) => e && Number.isFinite(e.lat) && Number.isFinite(e.lon)
+        );
+        endpoints.forEach((e) => {
+          L.circleMarker([e.lat, e.lon], {
+            radius: 6, color: "#fff", weight: 2, fillColor: categoryColor(e.category, styles), fillOpacity: 1,
+          })
+            .addTo(map)
+            .bindTooltip(escapeHtml(e.icao || ""), { permanent: true, direction: "top", className: "icao-tip", offset: [0, -6] });
+        });
+
+        const bounds = [];
+        if (route) route.forEach((p) => bounds.push(p));
+        endpoints.forEach((e) => bounds.push([e.lat, e.lon]));
+        if (bounds.length >= 2) map.fitBounds(bounds, { padding: [30, 30] });
+        else if (bounds.length === 1) map.setView(bounds[0], 8);
+        else map.setView([39, -98], 3);
+
+        // The strip is injected via innerHTML, so Leaflet must re-measure once laid out.
+        setTimeout(() => { if (routeMapInstance === map) map.invalidateSize(); }, 0);
+      }).catch((err) => {
+        // No map, no error surfaced to the user — drop the empty strip.
+        console.warn("Route map unavailable:", err && err.message);
+        const el = document.getElementById("routeMap");
+        const section = el && el.closest(".route-strip");
+        if (section) section.remove();
+      });
     }
 
     async function fetchBriefing(from, to, departTime) {
