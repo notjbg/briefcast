@@ -12,6 +12,7 @@ const {
 } = require('./_utils');
 const { computeVerdict, parseWind, STANDARD_MINIMUMS } = require('../public/verdict.js');
 const { buildTimeline } = require('./_timeline');
+const { isConvective, buildMapPayload } = require('./_geo');
 const { z } = require('zod');
 
 const TFR_RADIUS_DEG = 0.5; // ~30 nm
@@ -53,11 +54,6 @@ function endpointFactors(name, metar) {
     gustKt,
     category: calculateFlightCategory(rawOb)
   };
-}
-
-function isConvective(item) {
-  const s = `${item.airsigmetType || ''} ${item.hazard || ''} ${item.phenomenon || ''}`.toUpperCase();
-  return s.includes('CONVECTIVE') || s.includes('CONV') || /\bTS\b/.test(s);
 }
 
 function buildFactors({ fromCode, toCode, departureMetar, destinationMetar, sigmets = [], airmets = [], tfrFeatures = [], hazardsFetchOk = true, airportFrom, airportTo }) {
@@ -383,6 +379,17 @@ module.exports = async function handler(req, res) {
     });
     const verdictResult = computeVerdict(factors, STANDARD_MINIMUMS);
 
+    const map = buildMapPayload({
+      airportFrom,
+      airportTo,
+      fromCode,
+      toCode,
+      depCategory,
+      destCategory,
+      sigmets,
+      airmets
+    });
+
     const nowMs = Date.now();
     const depTimeline = buildTimeline(departureTaf, nowMs);
     const destTimeline = buildTimeline(destinationTaf, nowMs);
@@ -445,6 +452,7 @@ module.exports = async function handler(req, res) {
       verdict: { ...verdictResult, minimums: STANDARD_MINIMUMS, explanation: ai?.verdictExplanation || null },
       factors,
       timeline,
+      map,
       stale: isStale || undefined,
       generatedAt: new Date().toISOString(),
       aiUsed: !!ai
@@ -460,4 +468,4 @@ module.exports = async function handler(req, res) {
 };
 
 module.exports.handler = module.exports;
-module.exports._test = { summarizeHazards, summarizePireps, selectAfdText, plainRouteSummary, normalizeMetarTimestamps, buildFactors, tfrNearEndpoint, contradictsVerdict };
+module.exports._test = { summarizeHazards, summarizePireps, selectAfdText, plainRouteSummary, normalizeMetarTimestamps, buildFactors, tfrNearEndpoint, contradictsVerdict, isConvective };
