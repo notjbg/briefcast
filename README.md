@@ -2,6 +2,10 @@
 
 BriefCast is a single-page pre-flight weather briefing app that translates aviation weather jargon into plain English for pilots.
 
+## Design: the Flight Strip
+
+The UI is styled as a printed **flight strip** — the paper progress strips used in air-traffic control. Briefings render on a paper "bay" with monospace data columns, a departure-window timeline bay, and the Go/No-Go verdict presented as a rubber-stamped clearance (GO / NO-GO / MARGINAL / INSUFFICIENT DATA) pressed onto the strip. A shared token set (paper, ink, bay-blue, rule) and condensed display type (Barlow Condensed) + monospace data type (IBM Plex Mono) carry the identity across the app, the route map, and the generated share cards.
+
 ## Stack
 
 - `public/index.html`: Vanilla HTML/CSS/JS app (single file, zero build step)
@@ -17,7 +21,13 @@ BriefCast is a single-page pre-flight weather briefing app that translates aviat
   - `verdict` — deterministic Go/No-Go: `{ verdict, reasons, minimums, explanation }`
   - `factors` — the individual data factors (ceiling, visibility, wind, hazards, etc.) that fed the verdict
   - `timeline` — departure-window outlook: `{ departure, destination } | null`, each an array of hourly slots (`{ hourIso, category, verdict }`) covering the next 12 hours. Weather-only (no traffic/NOTAM data).
+  - `map` — route-map payload for the Leaflet strip, or `null` when either airport lacks coordinates: `{ from, to, route, hazardPolygons }`. `from`/`to` are `{ icao, lat, lon, category }`; `route` is a 32-point great-circle polyline (`[lat, lon]` pairs); `hazardPolygons` is an array of `{ kind: 'convective' | 'sigmet' | 'airmet', coords }` for SIGMET/AIRMET overlays.
+- `GET /api/og?from=KORD&to=KLAX` — 1200×630 PNG share card (Open Graph). Renders the current Go/No-Go verdict as a stamped flight strip. The verdict/category are **never** trusted from query params: the endpoint validates only that `from`/`to` look like airport codes, then fetches its own `/api/briefing` and renders from that payload. Any missing/invalid params or any upstream failure degrades to a generic branded card at HTTP 200 (never a 500 or JSON body). Fonts are embedded (Barlow Condensed + IBM Plex Mono); on font-fetch failure Satori falls back to bundled Noto Sans.
 - `POST /api/waitlist` — waitlist email capture (via Resend)
+
+## Permalinks & share cards
+
+A rendered briefing is shareable. The app rewrites the URL to `/?from=KORD&to=KLAX` (via `history.replaceState`) once a briefing renders, and a **Copy link** button copies that permalink. Loading a `?from=…&to=…` URL replays the exact submit path (same validation, loading UX, and render pipeline). The permalink also drives the `og:image` meta tag, pointing social unfurls at `/api/og?from=…&to=…` so a shared link previews as the stamped verdict card.
 
 ## Environment Variables
 

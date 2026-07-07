@@ -12,6 +12,7 @@ const {
 } = require('./_utils');
 const { computeVerdict, parseWind, STANDARD_MINIMUMS } = require('../public/verdict.js');
 const { buildTimeline } = require('./_timeline');
+const { isConvective, buildMapPayload, splitAirsigmets } = require('./_geo');
 const { z } = require('zod');
 
 const TFR_RADIUS_DEG = 0.5; // ~30 nm
@@ -55,11 +56,6 @@ function endpointFactors(name, metar) {
   };
 }
 
-function isConvective(item) {
-  const s = `${item.airsigmetType || ''} ${item.hazard || ''} ${item.phenomenon || ''}`.toUpperCase();
-  return s.includes('CONVECTIVE') || s.includes('CONV') || /\bTS\b/.test(s);
-}
-
 function buildFactors({ fromCode, toCode, departureMetar, destinationMetar, sigmets = [], airmets = [], tfrFeatures = [], hazardsFetchOk = true, airportFrom, airportTo }) {
   return {
     departure: endpointFactors(fromCode, departureMetar),
@@ -101,7 +97,8 @@ function summarizeHazards(sigmets = [], airmets = [], tfrs = []) {
   sigmets.slice(0, 5).forEach((s) => {
     const id = s.airSigmetId || s.rawSigmet || s.hazard || 'SIGMET';
     const hazard = s.hazard || s.phenomenon || 'hazard';
-    const valid = s.validTimeFrom || s.validTimeTo || s.obsTime || '';
+    const validIso = normalizeTimestamp(s.validTimeFrom || s.validTimeTo || s.obsTime);
+    const valid = validIso ? `valid from ${validIso.slice(11, 16)}Z` : '';
     out.push(`SIGMET ${id}: ${hazard}${valid ? ` (${valid})` : ''}`);
   });
 
@@ -352,12 +349,10 @@ module.exports = async function handler(req, res) {
     const depCategory = calculateFlightCategory(departureMetar.rawOb || '');
     const destCategory = calculateFlightCategory(destinationMetar.rawOb || '');
 
-    const sigmets = Array.isArray(airsigmetsRaw)
-      ? airsigmetsRaw.filter((item) => String(item.airsigmetType || item.hazard || '').toUpperCase().includes('SIGMET'))
-      : [];
-    const airmets = Array.isArray(airsigmetsRaw)
-      ? airsigmetsRaw.filter((item) => String(item.airsigmetType || item.hazard || '').toUpperCase().includes('AIRMET'))
-      : [];
+    // splitAirsigmets handles the live API's `airSigmetType` (capital S) casing;
+    // the old inline filter only checked lowercase and silently dropped real
+    // convective SIGMETs from both arrays.
+    const { sigmets, airmets } = splitAirsigmets(airsigmetsRaw);
     const tfrs = (tfrAlerts?.features || []).map((f) => ({
       id: f?.properties?.id,
       notamId: f?.properties?.event,
@@ -382,6 +377,17 @@ module.exports = async function handler(req, res) {
       airportTo
     });
     const verdictResult = computeVerdict(factors, STANDARD_MINIMUMS);
+
+    const map = buildMapPayload({
+      airportFrom,
+      airportTo,
+      fromCode,
+      toCode,
+      depCategory,
+      destCategory,
+      sigmets,
+      airmets
+    });
 
     const nowMs = Date.now();
     const depTimeline = buildTimeline(departureTaf, nowMs);
@@ -445,6 +451,7 @@ module.exports = async function handler(req, res) {
       verdict: { ...verdictResult, minimums: STANDARD_MINIMUMS, explanation: ai?.verdictExplanation || null },
       factors,
       timeline,
+      map,
       stale: isStale || undefined,
       generatedAt: new Date().toISOString(),
       aiUsed: !!ai
@@ -460,4 +467,4 @@ module.exports = async function handler(req, res) {
 };
 
 module.exports.handler = module.exports;
-module.exports._test = { summarizeHazards, summarizePireps, selectAfdText, plainRouteSummary, normalizeMetarTimestamps, buildFactors, tfrNearEndpoint, contradictsVerdict };
+module.exports._test = { summarizeHazards, summarizePireps, selectAfdText, plainRouteSummary, normalizeMetarTimestamps, buildFactors, tfrNearEndpoint, contradictsVerdict, isConvective };

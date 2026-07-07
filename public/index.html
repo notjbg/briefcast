@@ -8,192 +8,255 @@
   <meta property="og:title" content="BriefCast — Pre-Flight Weather Briefings in Plain English" />
   <meta property="og:description" content="Plain-English weather briefings for pilots with METARs, TAFs, AFDs, PIREPs, and hazards in one place." />
   <meta property="og:type" content="website" />
-  <meta property="og:image" content="/og-image.png" />
+  <!-- Default share card: the generic branded flight strip. Social scrapers read
+       this server-rendered default; when a permalink loads, the client swaps in a
+       route-specific card (see updateOgImage). -->
+  <meta property="og:image" content="/api/og" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="BriefCast — Pre-Flight Weather Briefings in Plain English" />
   <meta name="twitter:description" content="Pre-flight weather briefings translated from aviation jargon to readable prose." />
-  <meta name="twitter:image" content="/og-image.png" />
+  <meta name="twitter:image" content="/api/og" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet" />
   <style>
     :root {
       color-scheme: light;
-      --bg: #f7f6f3;
-      --card: #ffffff;
-      --ink: #171717;
-      --muted: #4d4d4d;
-      --line: #d9d4cb;
-      --accent: #064e3b;
-      --accent-soft: #e8f3ef;
-      --danger: #8b1d24;
-      --vfr: #0f7a36;
-      --mvfr: #0c4da2;
-      --ifr: #b91c1c;
-      --lifr: #a21caf;
-      --shadow: 0 10px 30px rgba(18, 24, 40, 0.08);
-      --radius: 14px;
+      /* paper, ink, stamp */
+      --paper: #FAFAF7;
+      --strip: #FFFFFF;
+      --ink: #16181B;
+      --ink-soft: #5C6166;
+      --rule: #D8DAD5;
+      --bay-blue: #2B5A8A;
+      --bay-blue-soft: rgba(43, 90, 138, 0.10);
+      --stamp-go: #1F7A3D;
+      --stamp-caution: #B07C10;
+      --stamp-nogo: #B3261E;
+      --stamp-insufficient: #5F6368;
+      /* type */
+      --font-display: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+      --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+      --font-body: "IBM Plex Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
     }
 
     [data-theme="dark"] {
       color-scheme: dark;
-      --bg: #111316;
-      --card: #1a1e24;
-      --ink: #f2f4f8;
-      --muted: #b4bdc8;
-      --line: #343b45;
-      --accent: #34d399;
-      --accent-soft: #0f2720;
-      --danger: #fca5a5;
-      --shadow: 0 12px 26px rgba(0, 0, 0, 0.28);
-    }
-
-    [data-theme="dark"] .badge.vfr { background: #22c55e; }
-    [data-theme="dark"] .badge.mvfr { background: #60a5fa; }
-    [data-theme="dark"] .badge.ifr { background: #f87171; }
-    [data-theme="dark"] .badge.lifr { background: #e879f9; }
-
-    [data-theme="dark"] body {
-      background: radial-gradient(1200px 700px at 110% -10%, #1a2e28 0%, rgba(26, 46, 40, 0) 60%),
-        radial-gradient(1000px 600px at -20% -10%, #1e1a14 0%, rgba(30, 26, 20, 0) 55%),
-        var(--bg);
+      /* night ops */
+      --paper: #101214;
+      --strip: #17191C;
+      --ink: #E8E6E1;
+      --ink-soft: #9AA0A6;
+      --rule: #2A2D31;
+      --bay-blue: #7FAAD4;
+      --bay-blue-soft: rgba(127, 170, 212, 0.14);
+      --stamp-go: #34A853;
+      --stamp-caution: #F0A92E;
+      --stamp-nogo: #E5544B;
+      --stamp-insufficient: #9AA0A6;
     }
 
     * { box-sizing: border-box; }
 
     body {
       margin: 0;
-      font-family: Georgia, Cambria, "Times New Roman", Times, serif;
+      font-family: var(--font-body);
       color: var(--ink);
-      background:
-        radial-gradient(1200px 700px at 110% -10%, #d8e8e1 0%, rgba(216, 232, 225, 0) 60%),
-        radial-gradient(1000px 600px at -20% -10%, #e9e3d7 0%, rgba(233, 227, 215, 0) 55%),
-        var(--bg);
-      line-height: 1.45;
+      background: var(--paper);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
     }
 
     .container {
-      max-width: 1120px;
+      max-width: 760px;
       margin: 0 auto;
-      padding: 24px 18px 40px;
+      padding: 22px 20px 48px;
     }
 
-    .sans, button, input, select, .badge, .section-kicker, .footer-links, .meta {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-    }
+    .sans { font-family: var(--font-body); }
+    button, input, select, textarea { font-family: inherit; }
 
     .mono, pre, code {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-family: var(--font-mono);
     }
 
     header {
-      display: grid;
-      gap: 14px;
       margin-bottom: 22px;
     }
 
     .brand-row {
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
+      align-items: baseline;
+      gap: 14px;
       flex-wrap: wrap;
+      padding-bottom: 10px;
+      border-bottom: 2px solid var(--ink);
     }
 
     .brand {
-      font-size: clamp(1.7rem, 3vw, 2.4rem);
       margin: 0;
-      letter-spacing: -0.02em;
+      font-family: var(--font-display);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-size: clamp(1.9rem, 5vw, 2.6rem);
+      line-height: 1;
+      color: var(--ink);
+    }
+
+    .zulu-clock {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      letter-spacing: 0.04em;
+      color: var(--ink-soft);
+      margin-right: auto;
     }
 
     .subtitle {
-      margin: 0;
-      color: var(--muted);
-      max-width: 75ch;
+      margin: 12px 0 0;
+      color: var(--ink-soft);
+      max-width: 68ch;
+      font-size: 0.98rem;
     }
 
     .btn {
-      border: 1px solid var(--line);
-      background: var(--card);
+      border: 1px solid var(--rule);
+      background: var(--strip);
       color: var(--ink);
-      border-radius: 12px;
-      padding: 12px 18px;
+      border-radius: 0;
+      padding: 9px 16px;
       cursor: pointer;
-      transition: all 0.16s ease;
+      transition: background 0.14s ease, color 0.14s ease, border-color 0.14s ease;
       font-weight: 600;
+      font-size: 0.92rem;
     }
 
-    .btn:hover,
-    .btn:focus-visible {
-      transform: translateY(-1px);
-      box-shadow: var(--shadow);
-      border-color: var(--line);
+    .btn:hover {
+      border-color: var(--ink);
     }
 
     .btn:focus-visible,
-    input:focus-visible {
-      outline: 2px solid var(--accent);
+    input:focus-visible,
+    a:focus-visible,
+    summary:focus-visible {
+      outline: 2px solid var(--bay-blue);
       outline-offset: 2px;
     }
 
     .btn-primary {
-      background: var(--accent);
-      color: #fff;
-      border-color: transparent;
+      background: var(--ink);
+      color: var(--paper);
+      border-color: var(--ink);
     }
 
-    .btn-primary:hover,
-    .btn-primary:focus-visible {
-      filter: brightness(1.03);
-      border-color: transparent;
+    .btn-primary:hover {
+      background: var(--bay-blue);
+      border-color: var(--bay-blue);
+      color: var(--paper);
     }
 
-    .card {
-      background: var(--card);
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      padding: 16px;
+    #swapBtn {
+      border: 0;
+      background: transparent;
+      color: var(--ink-soft);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 6px;
+      font-size: 1.3rem;
+      line-height: 1;
+    }
+
+    #swapBtn:hover {
+      color: var(--bay-blue);
+    }
+
+    .card, .strip {
+      background: var(--strip);
+      border: 1px solid var(--rule);
+      border-left: 4px solid var(--strip-rail, var(--bay-blue));
+      border-radius: 0;
+      padding: 15px 18px;
       margin-bottom: 14px;
-      animation: fadeIn 250ms ease both;
+      animation: fadeIn 220ms ease both;
     }
+
+    .strip-rail { --strip-rail: var(--bay-blue); }
+    /* Severity rails — verdict-bearing strips take stamp colors; quiet strips
+       drop to a plain rule so only strips with something to say carry color. */
+    .rail-caution { --strip-rail: var(--stamp-caution); }
+    .rail-quiet { --strip-rail: var(--rule); }
 
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(8px); }
+      from { opacity: 0; transform: translateY(6px); }
       to { opacity: 1; transform: translateY(0); }
     }
 
     .inputs {
       display: grid;
-      gap: 12px;
       grid-template-columns: 1fr auto 1fr auto;
-      align-items: end;
+      align-items: stretch;
+      border: 1px solid var(--rule);
+      margin-top: 4px;
     }
+
+    .inputs > * {
+      padding: 10px 14px;
+      border-right: 1px solid var(--rule);
+    }
+
+    .inputs > *:last-child { border-right: 0; }
 
     label {
       display: grid;
-      gap: 6px;
+      gap: 5px;
       font-weight: 600;
+    }
+
+    .strip-field-label {
+      font-family: var(--font-display);
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+      color: var(--ink-soft);
     }
 
     input[type="text"],
     input[type="email"],
     input[type="datetime-local"] {
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      background: var(--card);
+      border: 0;
+      border-bottom: 2px solid var(--rule);
+      border-radius: 0;
+      background: transparent;
       color: var(--ink);
-      padding: 10px 12px;
+      padding: 6px 2px;
       font-size: 0.98rem;
       width: 100%;
     }
 
+    input[type="text"]:focus,
+    input[type="email"]:focus,
+    input[type="datetime-local"]:focus {
+      border-bottom-color: var(--bay-blue);
+    }
+
+    #fromInput, #toInput {
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 600;
+    }
+
     .input-hint {
       font-size: 0.82rem;
-      color: var(--muted);
+      color: var(--ink-soft);
       margin: 4px 0 0;
     }
 
     .meta {
       font-size: 0.8rem;
-      color: var(--muted);
+      color: var(--ink-soft);
       margin-top: 6px;
     }
 
@@ -203,19 +266,23 @@
       margin-top: 18px;
     }
 
-    .section-kicker {
+    .section-kicker, .strip-label {
       margin: 0 0 8px;
-      font-size: 0.74rem;
-      letter-spacing: 0.08em;
+      font-family: var(--font-display);
+      font-size: 0.82rem;
+      letter-spacing: 0.06em;
       text-transform: uppercase;
-      color: var(--muted);
-      font-weight: 700;
+      color: var(--ink-soft);
+      font-weight: 600;
     }
 
     h2 {
       margin: 0 0 10px;
-      font-size: 1.15rem;
-      letter-spacing: -0.01em;
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 1.3rem;
+      letter-spacing: 0.01em;
+      color: var(--ink);
     }
 
     .grid-2 {
@@ -224,48 +291,61 @@
       gap: 14px;
     }
 
+    /* Flight-category chips — small square chips, mono, token-table colors only.
+       Aviation mapping: VFR → --stamp-go, MVFR → --bay-blue, IFR → --stamp-nogo.
+       LIFR magenta is not in the token table, so LIFR also uses --stamp-nogo —
+       the chip text disambiguates, and an offset second ring marks it as the
+       worse condition. Text color is --strip: paper-white on light fills,
+       night-ops ink on the brightened dark-theme fills. */
     .badge {
       display: inline-flex;
       align-items: center;
-      border-radius: 999px;
-      padding: 4px 10px;
-      font-size: 0.8rem;
-      font-weight: 700;
-      letter-spacing: 0.02em;
-      color: #fff;
+      border-radius: 0;
+      padding: 2px 8px;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      color: var(--strip);
     }
 
-    .badge.vfr { background: var(--vfr); }
-    .badge.mvfr { background: var(--mvfr); }
-    .badge.ifr { background: var(--ifr); }
-    .badge.lifr { background: var(--lifr); }
+    .badge.vfr { background: var(--stamp-go); }
+    .badge.mvfr { background: var(--bay-blue); }
+    .badge.ifr { background: var(--stamp-nogo); }
+    .badge.lifr { background: var(--stamp-nogo); outline: 1px solid var(--stamp-nogo); outline-offset: 2px; }
 
+    /* Raw teleprinter blocks — mono on a faint ruled inset: --paper ground,
+       hairline rules top and bottom, no side chrome. */
     pre {
-      margin: 0;
-      border: 1px solid var(--line);
-      background: rgba(0, 0, 0, 0.04);
-      border-radius: 10px;
-      padding: 10px;
+      margin: 8px 0 0;
+      border: 0;
+      border-top: 1px solid var(--rule);
+      border-bottom: 1px solid var(--rule);
+      background: var(--paper);
+      border-radius: 0;
+      padding: 10px 12px;
       white-space: pre-wrap;
       overflow-wrap: anywhere;
       font-size: 0.86rem;
       line-height: 1.35;
     }
 
-    [data-theme="dark"] pre {
-      background: rgba(255, 255, 255, 0.08);
+    /* Decoded English — Plex Sans directly beneath its raw block. */
+    .decoded {
+      font-family: var(--font-body);
+      margin: 8px 0 0;
     }
 
     .status {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      font-family: var(--font-body);
       margin: 8px 0 0;
       min-height: 1.3rem;
-      color: var(--muted);
+      color: var(--ink-soft);
       font-size: 0.9rem;
     }
 
     .error {
-      color: var(--danger);
+      color: var(--stamp-nogo);
       font-weight: 600;
     }
 
@@ -275,13 +355,8 @@
     }
 
     .pro {
-      border: 1px solid #e0b861;
-      background: linear-gradient(145deg, #fff9eb, #fff3d5);
-    }
-
-    [data-theme="dark"] .pro {
-      border-color: #8c6f2e;
-      background: linear-gradient(145deg, #2e2617, #1f1911);
+      --strip-rail: var(--stamp-caution);
+      background: var(--strip);
     }
 
     .pro ul {
@@ -297,12 +372,22 @@
       font-size: 0.94rem;
     }
 
-    a { color: var(--accent); }
+    .site-footer {
+      margin-top: 28px;
+      padding-top: 14px;
+      border-top: 1px solid var(--rule);
+      color: var(--ink-soft);
+      font-size: 0.9rem;
+    }
+
+    .site-footer strong { color: var(--ink); }
+
+    a { color: var(--bay-blue); }
 
     .print-note {
-      border-left: 4px solid var(--accent);
+      border-left: 4px solid var(--bay-blue);
       padding-left: 10px;
-      color: var(--muted);
+      color: var(--ink-soft);
       font-size: 0.9rem;
       margin: 10px 0 0;
     }
@@ -320,7 +405,7 @@
 
     .loading-pulse {
       height: 4px;
-      background: var(--accent);
+      background: var(--bay-blue);
       border-radius: 2px;
       animation: pulse 1.5s ease-in-out infinite;
       margin-bottom: 12px;
@@ -334,30 +419,30 @@
     .combobox-list {
       position: absolute; top: 100%; left: 0; right: 0; z-index: 100;
       max-height: 240px; overflow-y: auto;
-      background: var(--card); border: 1px solid var(--line);
-      border-radius: 10px; box-shadow: var(--shadow);
-      margin-top: 4px; display: none;
+      background: var(--strip); border: 1px solid var(--rule);
+      border-radius: 0;
+      margin-top: 2px; display: none;
     }
     .combobox-list.open { display: block; }
     .combobox-option {
-      padding: 10px 12px; cursor: pointer;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      padding: 9px 12px; cursor: pointer;
+      font-family: var(--font-body);
       font-size: 0.9rem; display: flex; gap: 8px; align-items: baseline;
     }
     .combobox-option:hover, .combobox-option.active {
-      background: var(--accent-soft);
+      background: var(--bay-blue-soft);
     }
-    .combobox-option .code { font-weight: 700; min-width: 4ch; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-    .combobox-option .iata { color: var(--muted); min-width: 3ch; }
+    .combobox-option .code { font-weight: 600; min-width: 4ch; font-family: var(--font-mono); }
+    .combobox-option .iata { color: var(--ink-soft); min-width: 3ch; }
     .combobox-option .name { flex: 1; }
 
     .stale-banner {
       background: #fef3c7;
       border: 1px solid #f59e0b;
-      border-radius: var(--radius);
+      border-radius: 0;
       padding: 10px 14px;
       color: #92400e;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      font-family: var(--font-body);
       font-size: 0.9rem;
       font-weight: 600;
       margin-bottom: 14px;
@@ -368,47 +453,109 @@
       color: #fbbf24;
     }
 
-    .verdict-hero { border-width: 2px; }
-    .verdict-hero .verdict-word { font-size: 2.2rem; font-weight: 800; letter-spacing: 0.02em; margin: 4px 0 2px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
-    .verdict-go { border-color: #1a7f37; } .verdict-go .verdict-word { color: #1a7f37; }
-    .verdict-marginal { border-color: #b58105; } .verdict-marginal .verdict-word { color: #b58105; }
-    .verdict-no-go { border-color: #c62828; } .verdict-no-go .verdict-word { color: #c62828; }
-    .verdict-insufficient { border-color: #6b7280; } .verdict-insufficient .verdict-word { color: #6b7280; }
-    [data-theme="dark"] .verdict-go { border-color: #4ade80; }
-    [data-theme="dark"] .verdict-go .verdict-word { color: #4ade80; }
-    [data-theme="dark"] .verdict-marginal { border-color: #fbbf24; }
-    [data-theme="dark"] .verdict-marginal .verdict-word { color: #fbbf24; }
-    [data-theme="dark"] .verdict-no-go { border-color: #f87171; }
-    [data-theme="dark"] .verdict-no-go .verdict-word { color: #f87171; }
-    [data-theme="dark"] .verdict-insufficient { border-color: #9ca3af; }
-    [data-theme="dark"] .verdict-insufficient .verdict-word { color: #9ca3af; }
-    .reason-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
-    .reason-chip { font-size: 0.8rem; padding: 3px 10px; border-radius: 999px; border: 1px solid currentColor; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
-    .reason-chip.sev-no-go, .reason-chip.sev-insufficient { color: #c62828; }
-    .reason-chip.sev-marginal { color: #b58105; }
-    .reason-chip.sev-ok { color: #1a7f37; }
-    [data-theme="dark"] .reason-chip.sev-no-go, [data-theme="dark"] .reason-chip.sev-insufficient { color: #f87171; }
-    [data-theme="dark"] .reason-chip.sev-marginal { color: #fbbf24; }
-    [data-theme="dark"] .reason-chip.sev-ok { color: #4ade80; }
+    /* Verdict strip: 4px left rail colored by verdict via --strip-rail (inherited by .card).
+       The stamp takes its color from --stamp-color. Both theme's stamp tokens are pre-brightened. */
+    .verdict-go        { --strip-rail: var(--stamp-go);           --stamp-color: var(--stamp-go); }
+    .verdict-marginal  { --strip-rail: var(--stamp-caution);      --stamp-color: var(--stamp-caution); }
+    .verdict-no-go     { --strip-rail: var(--stamp-nogo);         --stamp-color: var(--stamp-nogo); }
+    .verdict-insufficient { --strip-rail: var(--stamp-insufficient); --stamp-color: var(--stamp-insufficient); }
+
+    .verdict-full { color: var(--ink-soft); }
+
+    /* The stamp — the signature element. Reads as pressed, not badged. */
+    .stamp-wrap { margin: 10px 0 6px; }
+    .stamp {
+      display: inline-block; padding: 8px 24px; position: relative;
+      font-family: var(--font-display);
+      font-weight: 700; font-size: 2.4rem; line-height: 1;
+      letter-spacing: 0.09em; text-transform: uppercase;
+      color: var(--stamp-color, var(--ink));
+      border: 3px solid currentColor; border-radius: 9px;
+      transform: rotate(-2.5deg); transform-origin: center;
+      -webkit-mask-image: radial-gradient(ellipse at 42% 58%, #000 62%, rgba(0,0,0,0.82) 78%, rgba(0,0,0,0.66) 100%);
+              mask-image: radial-gradient(ellipse at 42% 58%, #000 62%, rgba(0,0,0,0.82) 78%, rgba(0,0,0,0.66) 100%);
+    }
+    .stamp::after { /* inner ring */
+      content: ''; position: absolute; inset: 4px;
+      border: 1px solid currentColor; border-radius: 5px;
+    }
+    @keyframes stamp-press {
+      0%   { opacity: 0; transform: scale(1.18) rotate(-1deg); }
+      100% { opacity: 1; transform: scale(1) rotate(-2.5deg); }
+    }
+    .stamp-press { animation: stamp-press 280ms cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+    @media (prefers-reduced-motion: reduce) { .stamp-press { animation: none; } }
+
+    /* Reason annotations — mono ink lines, not pills. */
+    .reason-chips { margin: 10px 0 4px; }
+    .reason-chip {
+      display: block;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      color: var(--ink-soft);
+      line-height: 1.5;
+    }
+    .reason-chip::before { content: "\25B8\00a0"; }
+    /* Timeline bay — sharp square-cut cells, mono hour labels, stamp fills.
+       Uncovered hours read as diagonal hatch (blank paper), not a gray block. */
     .timeline-row { display: flex; align-items: center; gap: 2px; margin: 6px 0; }
-    .timeline-label { font-size: 0.75rem; width: 46px; color: var(--muted); flex-shrink: 0; }
-    .timeline-cell { flex: 1; height: 22px; border-radius: 3px; position: relative; min-width: 14px; }
-    .timeline-cell.v-go { background: #1a7f37; }
-    .timeline-cell.v-marginal { background: #b58105; }
-    .timeline-cell.v-no-go { background: #c62828; }
-    [data-theme="dark"] .timeline-cell.v-go { background: #4ade80; }
-    [data-theme="dark"] .timeline-cell.v-marginal { background: #fbbf24; }
-    [data-theme="dark"] .timeline-cell.v-no-go { background: #f87171; }
-    .timeline-cell.v-empty { background: var(--line); opacity: 0.45; }
-    [data-theme="dark"] .timeline-cell.v-empty { background: #374151; opacity: 0.6; }
+    .timeline-label { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.04em; width: 46px; color: var(--ink-soft); flex-shrink: 0; }
+    .timeline-cell { flex: 1; height: 22px; border-radius: 0; position: relative; min-width: 14px; }
+    .timeline-cell.v-go { background: var(--stamp-go); }
+    .timeline-cell.v-marginal { background: var(--stamp-caution); }
+    .timeline-cell.v-no-go { background: var(--stamp-nogo); }
+    .timeline-cell.v-empty {
+      background: repeating-linear-gradient(45deg, var(--rule) 0, var(--rule) 3px, transparent 3px, transparent 8px);
+    }
     .timeline-hours { display: flex; gap: 2px; margin-left: 48px; }
-    .timeline-hour { flex: 1; font-size: 0.65rem; color: var(--muted); text-align: center; min-width: 14px; }
-    .advisory-line { font-size: 0.78rem; color: var(--muted); margin-top: 8px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .timeline-hour { flex: 1; font-family: var(--font-mono); font-size: 0.65rem; color: var(--ink-soft); text-align: center; min-width: 14px; }
+    .advisory-line { font-size: 0.78rem; color: var(--ink-soft); margin-top: 8px; font-family: var(--font-body); }
     .minimums-editor { display: none; gap: 8px; flex-wrap: wrap; margin-top: 10px; align-items: end; }
     .minimums-editor.open { display: flex; }
     .minimums-editor label { display: flex; flex-direction: column; font-size: 0.75rem; gap: 2px; }
-    .minimums-editor input { width: 90px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--ink); padding: 8px 10px; }
-    .minimums-tag { font-size: 0.78rem; color: var(--muted); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .minimums-editor label { color: var(--ink-soft); font-family: var(--font-display); letter-spacing: 0.04em; text-transform: uppercase; }
+    .minimums-editor input {
+      width: 90px; background: transparent; color: var(--ink);
+      font-family: var(--font-mono); font-size: 0.9rem;
+      border: 0; border-bottom: 1px solid var(--rule); border-radius: 0;
+      padding: 6px 2px;
+    }
+    .minimums-editor input:focus { outline: none; border-bottom-color: var(--bay-blue); }
+    .minimums-tag { font-size: 0.78rem; color: var(--ink-soft); font-family: var(--font-body); }
+
+    /* Route map strip — Leaflet map on a paper strip. Tiles are desaturated so
+       the category-colored endpoints and hazard fills carry the meaning. */
+    .route-map {
+      height: 300px;
+      width: 100%;
+      border: 1px solid var(--rule);
+      border-radius: 0;
+      background: var(--strip);
+    }
+    .route-map .leaflet-tile-pane { filter: grayscale(1) contrast(1.05); }
+    [data-theme="dark"] .route-map .leaflet-tile-pane {
+      filter: invert(1) hue-rotate(180deg) brightness(0.9) grayscale(0.4);
+    }
+    .route-map .leaflet-container { font-family: var(--font-body); background: var(--strip); }
+    .map-caption { margin: 8px 0 0; font-size: 0.78rem; color: var(--ink-soft); font-family: var(--font-body); }
+    .leaflet-tooltip.icao-tip {
+      font-family: var(--font-mono); font-size: 0.72rem; font-weight: 600; letter-spacing: 0.04em;
+      padding: 1px 6px; color: var(--ink); background: var(--strip);
+      border: 1px solid var(--rule); border-radius: 0; box-shadow: none;
+    }
+    .leaflet-tooltip.icao-tip::before { display: none; }
+
+    .copy-link-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 10px 0 4px;
+    }
+    .copy-link-confirm {
+      font-family: var(--font-body);
+      font-size: 0.85rem;
+      color: var(--ink-soft);
+    }
 
     .quick-look {
       display: flex;
@@ -420,44 +567,83 @@
       display: flex;
       align-items: center;
       gap: 6px;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      font-family: var(--font-body);
       font-size: 0.95rem;
     }
 
     .source-label {
       font-size: 0.72rem;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-      color: var(--muted);
+      font-family: var(--font-body);
+      color: var(--ink-soft);
       font-style: italic;
       margin-top: 4px;
     }
 
     .metar-age {
       font-size: 0.8rem;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-      color: var(--muted);
+      font-family: var(--font-body);
+      color: var(--ink-soft);
       margin-top: 4px;
     }
 
-    @media (max-width: 920px) {
+    @media (max-width: 720px) {
       .inputs {
         grid-template-columns: 1fr;
       }
+      .inputs > * {
+        border-right: 0;
+        border-bottom: 1px solid var(--rule);
+      }
+      .inputs > *:last-child { border-bottom: 0; }
       .grid-2 {
         grid-template-columns: 1fr;
       }
     }
 
     @media print {
-      body { background: #fff; }
-      .no-print { display: none !important; }
-      .card { box-shadow: none; break-inside: avoid; }
-      a { color: #000; text-decoration: none; }
-      .footer-links { display: none; }
+      /* Print is always day-ops paper, whatever theme the screen was in.
+         Values are the light token table (paper forced to strip-white). */
+      :root, [data-theme="dark"] {
+        --paper: #FFFFFF;
+        --strip: #FFFFFF;
+        --ink: #16181B;
+        --ink-soft: #5C6166;
+        --rule: #D8DAD5;
+        --bay-blue: #2B5A8A;
+        --bay-blue-soft: rgba(43, 90, 138, 0.10);
+        --stamp-go: #1F7A3D;
+        --stamp-caution: #B07C10;
+        --stamp-nogo: #B3261E;
+        --stamp-insufficient: #5F6368;
+      }
+      body { background: #FFFFFF; font-size: 0.92rem; }
+      .no-print, .footer-links, .combobox-list, .loading-pulse { display: none !important; }
+      .container { max-width: none; padding: 0; }
+      /* Strips print as strips: borders and rails kept, compacted to fit
+         a typical briefing on ~2 pages. */
+      .card, .strip {
+        break-inside: avoid;
+        border: 1px solid var(--rule);
+        border-left: 4px solid var(--strip-rail, var(--bay-blue));
+        padding: 10px 14px;
+        margin-bottom: 10px;
+        animation: none;
+      }
+      /* Stamp, rails, category chips, and timeline cells must keep their ink. */
+      .card, .strip, .stamp, .badge, .timeline-cell, .stale-banner {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .stamp-press { animation: none; }
+      .stamp { font-size: 2rem; }
+      /* Stale banner prints in its day colors even from dark mode. */
+      [data-theme="dark"] .stale-banner { background: #fef3c7; border-color: #f59e0b; color: #92400e; }
+      pre { font-size: 0.78rem; }
+      a { color: var(--ink); text-decoration: none; }
     }
 
     @media (prefers-reduced-motion: reduce) {
-      .card { animation: none; }
+      .card, .strip { animation: none; }
       .loading-pulse { animation: none; opacity: 0.6; width: 100%; }
     }
   </style>
@@ -509,29 +695,30 @@
     <header>
       <div class="brand-row">
         <h1 class="brand">BriefCast</h1>
-        <button class="btn no-print" id="themeToggle" type="button" aria-label="Toggle dark mode">Dark Mode</button>
+        <span class="zulu-clock mono" id="zuluClock" aria-label="Current Zulu time"></span>
+        <button class="btn no-print" id="themeToggle" type="button" aria-label="Toggle dark mode">Dark mode</button>
       </div>
       <p class="subtitle sans">Pre-flight weather briefings in plain English. Pull current conditions, forecasts, hazards, and pilot reports in one cockpit-friendly view.</p>
     </header>
 
     <section class="card no-print" aria-labelledby="briefing-form-title">
-      <p class="section-kicker">Flight Setup</p>
-      <h2 id="briefing-form-title">Build Your Briefing</h2>
+      <p class="section-kicker">Route</p>
+      <h2 id="briefing-form-title">Build your briefing</h2>
       <form id="briefingForm" novalidate>
         <div class="inputs">
           <label>
-            <span class="sans">From (ICAO or IATA)</span>
-            <input id="fromInput" type="text" name="from" autocomplete="off" required aria-required="true" aria-label="Departure airport" maxlength="5" />
+            <span class="strip-field-label">Dep</span>
+            <input id="fromInput" type="text" name="from" autocomplete="off" required aria-required="true" aria-label="Departure airport" maxlength="5" placeholder="KAUS" />
           </label>
-          <button class="btn" id="swapBtn" type="button" aria-label="Swap departure and destination">Swap</button>
+          <button class="btn" id="swapBtn" type="button" aria-label="Swap departure and destination">&#8646;</button>
           <label>
-            <span class="sans">To (ICAO or IATA)</span>
-            <input id="toInput" type="text" name="to" autocomplete="off" required aria-required="true" aria-label="Destination airport" maxlength="5" />
+            <span class="strip-field-label">Dest</span>
+            <input id="toInput" type="text" name="to" autocomplete="off" required aria-required="true" aria-label="Destination airport" maxlength="5" placeholder="KABQ" />
           </label>
-          <button class="btn btn-primary" id="briefBtn" type="submit" aria-label="Generate weather briefing">Generate Briefing</button>
+          <button class="btn btn-primary" id="briefBtn" type="submit" aria-label="Generate weather briefing">Generate briefing</button>
         </div>
         <label style="margin-top:12px;max-width:360px;">
-          <span class="sans">Planned Departure (optional)</span>
+          <span class="strip-field-label">Planned departure (optional)</span>
           <input id="departTimeInput" type="datetime-local" name="departTime" aria-label="Planned departure date and time" />
           <span class="input-hint sans">Helps the AI tailor the summary to your departure window. Does not change raw weather data.</span>
         </label>
@@ -542,7 +729,7 @@
     </section>
 
     <section id="results" class="results" aria-live="polite" aria-label="Weather briefing results">
-      <p class="sans" id="emptyState" style="color:var(--muted);text-align:center;padding:20px 0;">Enter departure and destination above to generate your briefing.</p>
+      <p class="sans" id="emptyState" style="color:var(--ink-soft);text-align:center;padding:20px 0;">Enter departure and destination above to generate your briefing.</p>
     </section>
 
     <section class="card pro no-print" aria-labelledby="pro-title">
@@ -555,17 +742,17 @@
         <li>Historical weather comparisons</li>
       </ul>
       <div class="footer-links">
-        <a class="btn btn-primary" href="https://plaincast.live" target="_blank" rel="noopener">Join Waitlist</a>
+        <a class="btn btn-primary" href="https://plaincast.live" target="_blank" rel="noopener">Join waitlist</a>
       </div>
       <form id="waitlistForm" class="sans" style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
         <label class="visually-hidden" for="waitlistEmail">Email</label>
         <input id="waitlistEmail" name="email" type="email" required placeholder="Enter your email" aria-label="Email for BriefCast Pro waitlist" style="max-width:320px;" />
-        <button class="btn" type="submit">Notify Me</button>
+        <button class="btn" type="submit">Notify me</button>
       </form>
       <p class="meta" id="waitlistStatus" aria-live="polite"></p>
     </section>
 
-    <footer class="card sans">
+    <footer class="site-footer sans">
       <strong>Built by Jonah Berg</strong>
       <div class="footer-links">
         <a href="https://theblueboard.co" target="_blank" rel="noopener">The Blue Board</a>
@@ -967,6 +1154,9 @@
 
     const MINIMUMS_KEY = 'briefcast.personalMinimums';
     const VERDICT_CLASS = { 'GO': 'verdict-go', 'MARGINAL': 'verdict-marginal', 'NO-GO': 'verdict-no-go', 'INSUFFICIENT DATA': 'verdict-insufficient' };
+    // Stamp face abbreviates only the long phrase; full phrase rides the strip label.
+    const STAMP_TEXT = { 'GO': 'GO', 'MARGINAL': 'MARGINAL', 'NO-GO': 'NO-GO', 'INSUFFICIENT DATA': 'INSUFF DATA' };
+    const VERDICT_FULL = { 'GO': 'Go', 'MARGINAL': 'Marginal', 'NO-GO': 'No-go', 'INSUFFICIENT DATA': 'Insufficient data' };
 
     function loadPersonalMinimums() {
       try {
@@ -1057,6 +1247,8 @@
       if (!data.verdict) return '';
       const { result, minimums } = activeVerdict(data);
       const cls = VERDICT_CLASS[result.verdict] || 'verdict-insufficient';
+      const stampText = STAMP_TEXT[result.verdict] || 'INSUFF DATA';
+      const fullPhrase = VERDICT_FULL[result.verdict] || 'Insufficient data';
       const chips = result.reasons.map((r) =>
         `<span class="reason-chip sev-${escapeHtml(r.severity)}">${escapeHtml(r.text)}</span>`
       ).join('');
@@ -1069,11 +1261,16 @@
       const m = minimums;
       return `
         <section class="card verdict-hero ${cls}">
-          <p class="section-kicker">Go / No-Go</p>
-          <p class="verdict-word">${escapeHtml(result.verdict)}</p>
+          <p class="section-kicker">Clearance</p>
+          <div class="stamp-wrap"><span class="stamp stamp-press" role="img" aria-label="${escapeHtml(fullPhrase)}">${escapeHtml(stampText)}</span></div>
+          <p class="strip-label verdict-full">${escapeHtml(fullPhrase)}</p>
           <div class="reason-chips">${chips}</div>
           ${explanation}
           <p class="minimums-tag">${minsLabel} · <a href="#" id="editMinimumsLink">Edit minimums</a></p>
+          <div class="copy-link-row no-print">
+            <button class="btn" type="button" id="copyLinkBtn">Copy link</button>
+            <span class="copy-link-confirm" id="copyLinkConfirm" role="status" aria-live="polite"></span>
+          </div>
           <form class="minimums-editor sans" id="minimumsEditor">
             <label>Ceiling (ft)<input type="number" id="minCeiling" min="0" step="100" value="${m.ceilingFt}"></label>
             <label>Visibility (sm)<input type="number" id="minVis" min="0" step="1" value="${m.visibilitySm}"></label>
@@ -1087,6 +1284,18 @@
     }
 
     function wireVerdictHero(data) {
+      // Re-trigger the stamp press on every fresh render: drop the class, force a
+      // reflow on the next frame, then re-add so re-generates re-press.
+      const stamp = document.querySelector('.verdict-hero .stamp');
+      if (stamp) {
+        stamp.classList.remove('stamp-press');
+        requestAnimationFrame(() => {
+          void stamp.offsetWidth; // reflow so the animation restarts
+          stamp.classList.add('stamp-press');
+        });
+      }
+      const copyBtn = document.getElementById('copyLinkBtn');
+      if (copyBtn) copyBtn.addEventListener('click', onCopyLink);
       const link = document.getElementById('editMinimumsLink');
       const editor = document.getElementById('minimumsEditor');
       if (!link || !editor) return;
@@ -1205,9 +1414,12 @@
       const cloudMap = { FEW: "few", SCT: "scattered", BKN: "broken", OVC: "overcast", VV: "vertical visibility" };
       const clouds = cloudTokens.length
         ? cloudTokens.map((c) => {
-            const layer = c.slice(0, 3);
-            const height = Number(c.slice(3)) * 100;
-            return `${cloudMap[layer] || layer} clouds at ${height.toLocaleString()} ft`;
+            const m = c.match(/^(FEW|SCT|BKN|OVC|VV)(\d{3})/);
+            if (!m) return c;
+            const height = Number(m[2]) * 100;
+            const suffix = c.slice(m[0].length); // CB/TCU etc.
+            const kind = suffix === "CB" ? " (cumulonimbus)" : suffix === "TCU" ? " (towering cumulus)" : "";
+            return `${cloudMap[m[1]] || m[1]} clouds at ${height.toLocaleString()} ft${kind}`;
           }).join(", ")
         : "No significant cloud layer reported";
 
@@ -1308,25 +1520,105 @@
           <p class="section-kicker">${escapeHtml(title)}</p>
           <h2>${escapeHtml(airport?.name || "Unknown Airport")} (${escapeHtml(airport?.icao || "----")})</h2>
           ${metarAgeHtml}
-          <p>${withGlossaryTerms(metar?.translation || `Current ${"METAR"}: ${metarDecoded.wind}. ${metarDecoded.visibility}. ${metarDecoded.clouds}. ${metarDecoded.tempDew}. ${metarDecoded.altimeter}. Weather: ${metarDecoded.weather}.`)}</p>
+          <pre class="mono" aria-label="Raw METAR">${escapeHtml(metarDecoded.raw || "No METAR available")}</pre>
+          <p class="decoded">${withGlossaryTerms(metar?.translation || `Current ${"METAR"}: ${metarDecoded.wind}. ${metarDecoded.visibility}. ${metarDecoded.clouds}. ${metarDecoded.tempDew}. ${metarDecoded.altimeter}. Weather: ${metarDecoded.weather}.`)}</p>
           ${sourceLabel}
-          <details>
-            <summary class="sans">Raw METAR</summary>
-            <pre class="mono">${escapeHtml(metarDecoded.raw || "No METAR available")}</pre>
-          </details>
           <h3 class="sans" style="margin:14px 0 8px;font-size:0.98rem;">TAF Outlook</h3>
-          <p>${withGlossaryTerms(taf?.translation || "Forecast periods decoded below.")}</p>
+          <pre class="mono" aria-label="Raw TAF">${escapeHtml(tafDecoded.raw || "No TAF available")}</pre>
+          <p class="decoded">${withGlossaryTerms(taf?.translation || "Forecast periods decoded below.")}</p>
           <ul class="sans">${tafPeriods}</ul>
-          <details>
-            <summary class="sans">Raw TAF</summary>
-            <pre class="mono">${escapeHtml(tafDecoded.raw || "No TAF available")}</pre>
-          </details>
         </article>
       `;
     }
 
     let lastBriefingData = null;
     let lastRoute = { from: null, to: null };
+
+    // --- Briefing permalinks + copy link ---
+    const PERMALINK_CODE_RE = /^[A-Za-z0-9]{3,4}$/;
+    let copyLinkTimeout = null;
+
+    function briefingPermalink() {
+      if (!lastRoute.from || !lastRoute.to) return null;
+      return `${location.origin}/?from=${encodeURIComponent(lastRoute.from)}&to=${encodeURIComponent(lastRoute.to)}`;
+    }
+
+    async function copyTextToClipboard(text) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        try {
+          await navigator.clipboard.writeText(text);
+          return;
+        } catch {
+          // fall through to execCommand fallback
+        }
+      }
+      const input = document.createElement("input");
+      input.value = text;
+      input.setAttribute("readonly", "");
+      input.style.position = "absolute";
+      input.style.left = "-9999px";
+      document.body.appendChild(input);
+      input.select();
+      let ok = false;
+      try {
+        ok = document.execCommand("copy");
+      } finally {
+        input.remove();
+      }
+      if (!ok) throw new Error("Copy not supported in this browser");
+    }
+
+    async function onCopyLink() {
+      const url = briefingPermalink();
+      if (!url) return;
+      let message = "Link copied";
+      try {
+        await copyTextToClipboard(url);
+      } catch {
+        message = "Copy failed — use the address bar";
+      }
+      const confirmEl = document.getElementById("copyLinkConfirm");
+      if (!confirmEl) return;
+      confirmEl.textContent = message;
+      if (copyLinkTimeout) clearTimeout(copyLinkTimeout);
+      copyLinkTimeout = setTimeout(() => {
+        copyLinkTimeout = null;
+        const el = document.getElementById("copyLinkConfirm");
+        if (el) el.textContent = "";
+      }, 2000);
+    }
+
+    // Point the og:image/twitter:image meta at the route-specific share card.
+    // Best-effort only: social scrapers read the server-rendered default (/api/og)
+    // before this runs, so this mainly helps clients that re-read the DOM.
+    function updateOgImage(fromCode, toCode) {
+      const url = `/api/og?from=${encodeURIComponent(fromCode)}&to=${encodeURIComponent(toCode)}`;
+      for (const selector of ['meta[property="og:image"]', 'meta[name="twitter:image"]']) {
+        const meta = document.head.querySelector(selector);
+        if (meta) meta.setAttribute("content", url);
+      }
+    }
+
+    function updatePermalink(fromCode, toCode) {
+      if (!PERMALINK_CODE_RE.test(fromCode) || !PERMALINK_CODE_RE.test(toCode)) return;
+      try {
+        history.replaceState(null, "", `/?from=${encodeURIComponent(fromCode)}&to=${encodeURIComponent(toCode)}`);
+      } catch {
+        // history API unavailable (e.g., sandboxed iframe) — permalink is a nicety, not a failure
+      }
+      updateOgImage(fromCode, toCode);
+    }
+
+    function applyPermalinkParams() {
+      const params = new URLSearchParams(location.search);
+      const from = params.get("from");
+      const to = params.get("to");
+      if (!from || !to || !PERMALINK_CODE_RE.test(from) || !PERMALINK_CODE_RE.test(to)) return;
+      els.fromInput.value = from.toUpperCase();
+      els.toInput.value = to.toUpperCase();
+      // Reuse the exact submit path — same validation, loading UX, and render pipeline.
+      els.briefingForm.requestSubmit();
+    }
 
     function rerenderResults(data) {
       if (!data) return;
@@ -1370,10 +1662,18 @@
         staleHtml = `<div class="stale-banner">Warning: Some weather data may be stale. Verify with official sources before flight.</div>`;
       }
 
+      const mapStripHtml = data.map ? `
+        <section class="card route-strip">
+          <p class="strip-label">ROUTE</p>
+          <div id="routeMap" class="route-map" role="img" aria-label="Route map from ${escapeHtml(fromCode)} to ${escapeHtml(toCode)}"></div>
+          <p class="map-caption">Great-circle track · hazards shown when reported</p>
+        </section>` : "";
+
       els.results.innerHTML = `
         ${staleHtml}
         ${renderVerdictHero(data)}
         ${renderTimeline(data)}
+        ${mapStripHtml}
         <section class="card">
           <p class="section-kicker">Quick Look</p>
           <h2>${escapeHtml(fromCode)} / ${escapeHtml(toCode)}</h2>
@@ -1405,12 +1705,12 @@
             <pre class="mono">${escapeHtml(data.afd?.raw || "No raw AFD excerpt available.")}</pre>
           </details>
         </section>
-        <section class="card">
+        <section class="card ${hazards.length ? 'rail-caution' : 'rail-quiet'}">
           <p class="section-kicker">Hazards & Alerts</p>
           <h2>Active SIGMETs, AIRMETs, and TFRs</h2>
           <ul class="sans">${hazardHtml}</ul>
         </section>
-        <section class="card">
+        <section class="card ${pireps.length ? '' : 'rail-quiet'}">
           <p class="section-kicker">PIREPs</p>
           <h2>Recent Pilot Reports</h2>
           <ul class="sans">${pirepHtml}</ul>
@@ -1422,6 +1722,105 @@
         </section>
       `;
       wireVerdictHero(data);
+      if (data.map) initRouteMap(data.map);
+    }
+
+    // --- Route map (Leaflet, lazy-loaded from CDN on first briefing with map data) ---
+    let routeMapInstance = null;
+    let leafletReady = null;
+    const LEAFLET_VERSION = "1.9.4";
+
+    function ensureLeaflet() {
+      if (window.L) return Promise.resolve(window.L);
+      if (leafletReady) return leafletReady;
+      leafletReady = new Promise((resolve, reject) => {
+        const link = document.createElement("link");
+        link.rel = "stylesheet";
+        link.href = `https://unpkg.com/leaflet@${LEAFLET_VERSION}/dist/leaflet.css`;
+        link.integrity = "sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H";
+        link.crossOrigin = "";
+        document.head.appendChild(link);
+        const script = document.createElement("script");
+        script.src = `https://unpkg.com/leaflet@${LEAFLET_VERSION}/dist/leaflet.js`;
+        script.integrity = "sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH";
+        script.crossOrigin = "";
+        script.onload = () => (window.L ? resolve(window.L) : reject(new Error("Leaflet global missing after load")));
+        script.onerror = () => reject(new Error("Leaflet CDN failed to load"));
+        document.head.appendChild(script);
+      });
+      return leafletReady;
+    }
+
+    function categoryColor(category, styles) {
+      switch ((category || "UNKNOWN").toUpperCase()) {
+        case "VFR": return styles.getPropertyValue("--stamp-go").trim();
+        case "MVFR": return styles.getPropertyValue("--bay-blue").trim();
+        case "IFR":
+        case "LIFR": return styles.getPropertyValue("--stamp-nogo").trim();
+        default: return styles.getPropertyValue("--ink-soft").trim();
+      }
+    }
+
+    function initRouteMap(mapData) {
+      if (!mapData) return;
+      ensureLeaflet().then((L) => {
+        const el = document.getElementById("routeMap");
+        if (!el) return; // results re-rendered before the CDN resolved
+        if (routeMapInstance) {
+          try { routeMapInstance.remove(); } catch {}
+          routeMapInstance = null;
+        }
+        const map = L.map(el, { scrollWheelZoom: false, attributionControl: true });
+        routeMapInstance = map;
+
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+          maxZoom: 18,
+        }).addTo(map);
+
+        const styles = getComputedStyle(document.documentElement);
+        const cautionColor = styles.getPropertyValue("--stamp-caution").trim();
+        const nogoColor = styles.getPropertyValue("--stamp-nogo").trim();
+        const blue = styles.getPropertyValue("--bay-blue").trim();
+
+        (mapData.hazardPolygons || []).forEach((poly) => {
+          if (!poly || !Array.isArray(poly.coords) || poly.coords.length < 3) return;
+          const fill = poly.kind === "convective" ? nogoColor : cautionColor;
+          L.polygon(poly.coords, { color: fill, weight: 1, fillColor: fill, fillOpacity: 0.18 }).addTo(map);
+        });
+
+        const route = Array.isArray(mapData.route) && mapData.route.length >= 2 ? mapData.route : null;
+        if (route) {
+          L.polyline(route, { color: blue, weight: 2, dashArray: "6 6", opacity: 0.9 }).addTo(map);
+        }
+
+        const endpoints = [mapData.from, mapData.to].filter(
+          (e) => e && Number.isFinite(e.lat) && Number.isFinite(e.lon)
+        );
+        endpoints.forEach((e) => {
+          L.circleMarker([e.lat, e.lon], {
+            radius: 6, color: "#fff", weight: 2, fillColor: categoryColor(e.category, styles), fillOpacity: 1,
+          })
+            .addTo(map)
+            .bindTooltip(escapeHtml(e.icao || ""), { permanent: true, direction: "top", className: "icao-tip", offset: [0, -6] });
+        });
+
+        const bounds = [];
+        if (route) route.forEach((p) => bounds.push(p));
+        endpoints.forEach((e) => bounds.push([e.lat, e.lon]));
+        if (bounds.length >= 2) map.fitBounds(bounds, { padding: [30, 30] });
+        else if (bounds.length === 1) map.setView(bounds[0], 8);
+        else map.setView([39, -98], 3);
+
+        // The strip is injected via innerHTML, so Leaflet must re-measure once laid out.
+        setTimeout(() => { if (routeMapInstance === map) map.invalidateSize(); }, 0);
+      }).catch((err) => {
+        // No map, no error surfaced to the user — drop the empty strip.
+        console.warn("Route map unavailable:", err && err.message);
+        const el = document.getElementById("routeMap");
+        const section = el && el.closest(".route-strip");
+        if (section) section.remove();
+      });
     }
 
     async function fetchBriefing(from, to, departTime) {
@@ -1450,6 +1849,7 @@
     async function onSubmit(event) {
       event.preventDefault();
       if (state.busy) return;
+      renderZuluClock();
 
       const fromCode = resolveAirport(els.fromInput.value);
       const toCode = resolveAirport(els.toInput.value);
@@ -1497,6 +1897,7 @@
         clearLoadingInterval();
         lastRoute = { from: fromCode, to: toCode };
         rerenderResults(data);
+        updatePermalink(fromCode, toCode);
         setStatus(`Briefing ready for ${fromCode} to ${toCode}.`);
         // Auto-scroll to results (6.5f)
         els.results.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1555,30 +1956,43 @@
       const saved = localStorage.getItem(key);
       if (saved === "dark") {
         document.documentElement.setAttribute("data-theme", "dark");
-        els.themeToggle.textContent = "Light Mode";
+        els.themeToggle.textContent = "Light mode";
       }
       els.themeToggle.addEventListener("click", () => {
         const current = document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
         const next = current === "dark" ? "light" : "dark";
         if (next === "dark") {
           document.documentElement.setAttribute("data-theme", "dark");
-          els.themeToggle.textContent = "Light Mode";
+          els.themeToggle.textContent = "Light mode";
         } else {
           document.documentElement.removeAttribute("data-theme");
-          els.themeToggle.textContent = "Dark Mode";
+          els.themeToggle.textContent = "Dark mode";
         }
         localStorage.setItem(key, next);
       });
+    }
+
+    const ZULU_MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+    function renderZuluClock() {
+      const el = document.getElementById("zuluClock");
+      if (!el) return;
+      const d = new Date();
+      const hh = String(d.getUTCHours()).padStart(2, "0");
+      const mm = String(d.getUTCMinutes()).padStart(2, "0");
+      const day = String(d.getUTCDate()).padStart(2, "0");
+      el.textContent = `${hh}${mm}Z · ${day} ${ZULU_MONTHS[d.getUTCMonth()]}`;
     }
 
     addAirportLookup();
     createCombobox(els.fromInput);
     createCombobox(els.toInput);
     setupTheme();
+    renderZuluClock();
 
     els.briefingForm.addEventListener("submit", onSubmit);
     els.swapBtn.addEventListener("click", onSwap);
     els.waitlistForm.addEventListener("submit", onWaitlistSubmit);
+    applyPermalinkParams();
   </script>
 </body>
 </html>
