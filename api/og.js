@@ -43,28 +43,42 @@ function h(type, props, ...children) {
   return { type, props: { ...(props || {}), ...(childProp !== undefined ? { children: childProp } : {}) } };
 }
 
-async function loadFont(path) {
-  const res = await fetch(new URL(path, import.meta.url));
+async function loadFont(path, baseUrl) {
+  // Fonts live in public/ and are served statically at /fonts/* — fetch over HTTP
+  // from our own origin. import.meta.url asset tracing does not include these
+  // files in the edge bundle (variable-path new URL defeats it; file:// is
+  // unfetchable in the edge runtime anyway).
+  const res = await fetch(new URL(path, baseUrl));
   if (!res.ok) throw new Error(`font fetch failed: ${path}`);
   return res.arrayBuffer();
 }
 
 // Returns the fonts array for ImageResponse, or [] on any failure (Satori then
 // falls back to its bundled Noto Sans — the card still renders at 200).
-async function loadFonts() {
-  try {
+// Cached at module scope: warm invocations skip the three fetches.
+let _fontsPromise = null;
+function loadFonts(baseUrl) {
+  if (!_fontsPromise) {
+    _fontsPromise = loadFontsUncached(baseUrl).catch(() => {
+      _fontsPromise = null; // allow retry on next invocation
+      return [];
+    });
+  }
+  return _fontsPromise;
+}
+
+async function loadFontsUncached(baseUrl) {
+  {
     const [semi, bold, mono] = await Promise.all([
-      loadFont('../public/fonts/BarlowCondensed-SemiBold.ttf'),
-      loadFont('../public/fonts/BarlowCondensed-Bold.ttf'),
-      loadFont('../public/fonts/IBMPlexMono-Regular.ttf')
+      loadFont('/fonts/BarlowCondensed-SemiBold.ttf', baseUrl),
+      loadFont('/fonts/BarlowCondensed-Bold.ttf', baseUrl),
+      loadFont('/fonts/IBMPlexMono-Regular.ttf', baseUrl)
     ]);
     return [
       { name: FONT_DISPLAY, data: semi, weight: 600, style: 'normal' },
       { name: FONT_DISPLAY, data: bold, weight: 700, style: 'normal' },
       { name: FONT_MONO, data: mono, weight: 400, style: 'normal' }
     ];
-  } catch {
-    return [];
   }
 }
 
@@ -309,7 +323,7 @@ function genericCardElement() {
 export default async function handler(req) {
   let fonts = [];
   try {
-    fonts = await loadFonts();
+    fonts = await loadFonts(req.url);
     const url = new URL(req.url);
     const v = validateCodes(url.searchParams.get('from'), url.searchParams.get('to'));
     if (!v.ok) return imageResponse(genericCardElement(), fonts);
