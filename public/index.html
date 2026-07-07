@@ -542,6 +542,18 @@
     }
     .leaflet-tooltip.icao-tip::before { display: none; }
 
+    .copy-link-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 10px 0 4px;
+    }
+    .copy-link-confirm {
+      font-family: var(--font-body);
+      font-size: 0.85rem;
+      color: var(--ink-soft);
+    }
+
     .quick-look {
       display: flex;
       gap: 18px;
@@ -1252,6 +1264,10 @@
           <div class="reason-chips">${chips}</div>
           ${explanation}
           <p class="minimums-tag">${minsLabel} · <a href="#" id="editMinimumsLink">Edit minimums</a></p>
+          <div class="copy-link-row no-print">
+            <button class="btn" type="button" id="copyLinkBtn">Copy link</button>
+            <span class="copy-link-confirm" id="copyLinkConfirm" role="status" aria-live="polite"></span>
+          </div>
           <form class="minimums-editor sans" id="minimumsEditor">
             <label>Ceiling (ft)<input type="number" id="minCeiling" min="0" step="100" value="${m.ceilingFt}"></label>
             <label>Visibility (sm)<input type="number" id="minVis" min="0" step="1" value="${m.visibilitySm}"></label>
@@ -1275,6 +1291,8 @@
           stamp.classList.add('stamp-press');
         });
       }
+      const copyBtn = document.getElementById('copyLinkBtn');
+      if (copyBtn) copyBtn.addEventListener('click', onCopyLink);
       const link = document.getElementById('editMinimumsLink');
       const editor = document.getElementById('minimumsEditor');
       if (!link || !editor) return;
@@ -1509,6 +1527,80 @@
 
     let lastBriefingData = null;
     let lastRoute = { from: null, to: null };
+
+    // --- Briefing permalinks + copy link ---
+    const PERMALINK_CODE_RE = /^[A-Za-z0-9]{3,4}$/;
+    let copyLinkTimeout = null;
+
+    function briefingPermalink() {
+      if (!lastRoute.from || !lastRoute.to) return null;
+      return `${location.origin}/?from=${encodeURIComponent(lastRoute.from)}&to=${encodeURIComponent(lastRoute.to)}`;
+    }
+
+    async function copyTextToClipboard(text) {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        try {
+          await navigator.clipboard.writeText(text);
+          return;
+        } catch {
+          // fall through to execCommand fallback
+        }
+      }
+      const input = document.createElement("input");
+      input.value = text;
+      input.setAttribute("readonly", "");
+      input.style.position = "absolute";
+      input.style.left = "-9999px";
+      document.body.appendChild(input);
+      input.select();
+      let ok = false;
+      try {
+        ok = document.execCommand("copy");
+      } finally {
+        input.remove();
+      }
+      if (!ok) throw new Error("Copy not supported in this browser");
+    }
+
+    async function onCopyLink() {
+      const url = briefingPermalink();
+      if (!url) return;
+      let message = "Link copied";
+      try {
+        await copyTextToClipboard(url);
+      } catch {
+        message = "Copy failed — use the address bar";
+      }
+      const confirmEl = document.getElementById("copyLinkConfirm");
+      if (!confirmEl) return;
+      confirmEl.textContent = message;
+      if (copyLinkTimeout) clearTimeout(copyLinkTimeout);
+      copyLinkTimeout = setTimeout(() => {
+        copyLinkTimeout = null;
+        const el = document.getElementById("copyLinkConfirm");
+        if (el) el.textContent = "";
+      }, 2000);
+    }
+
+    function updatePermalink(fromCode, toCode) {
+      if (!PERMALINK_CODE_RE.test(fromCode) || !PERMALINK_CODE_RE.test(toCode)) return;
+      try {
+        history.replaceState(null, "", `/?from=${encodeURIComponent(fromCode)}&to=${encodeURIComponent(toCode)}`);
+      } catch {
+        // history API unavailable (e.g., sandboxed iframe) — permalink is a nicety, not a failure
+      }
+    }
+
+    function applyPermalinkParams() {
+      const params = new URLSearchParams(location.search);
+      const from = params.get("from");
+      const to = params.get("to");
+      if (!from || !to || !PERMALINK_CODE_RE.test(from) || !PERMALINK_CODE_RE.test(to)) return;
+      els.fromInput.value = from.toUpperCase();
+      els.toInput.value = to.toUpperCase();
+      // Reuse the exact submit path — same validation, loading UX, and render pipeline.
+      els.briefingForm.requestSubmit();
+    }
 
     function rerenderResults(data) {
       if (!data) return;
@@ -1787,6 +1879,7 @@
         clearLoadingInterval();
         lastRoute = { from: fromCode, to: toCode };
         rerenderResults(data);
+        updatePermalink(fromCode, toCode);
         setStatus(`Briefing ready for ${fromCode} to ${toCode}.`);
         // Auto-scroll to results (6.5f)
         els.results.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1881,6 +1974,7 @@
     els.briefingForm.addEventListener("submit", onSubmit);
     els.swapBtn.addEventListener("click", onSwap);
     els.waitlistForm.addEventListener("submit", onWaitlistSubmit);
+    applyPermalinkParams();
   </script>
 </body>
 </html>
