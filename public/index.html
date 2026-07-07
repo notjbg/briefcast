@@ -1120,6 +1120,10 @@
       if (!raw) return null;
       if (state.airportIndex.has(raw)) return raw;
       if (state.codeIndex.has(raw)) return state.codeIndex.get(raw);
+      // Any valid 4-letter ICAO is accepted even if it's outside our top-200
+      // suggestion list — the API briefs any ICAO. Mirrors normalizeAirportCode
+      // server-side, and takes precedence over fuzzy name matching.
+      if (/^[A-Z]{4}$/.test(raw)) return raw;
 
       const fuzzy = AIRPORTS.find((a) => {
         const target = `${a.name} ${a.state} ${a.icao} ${a.iata || ""}`.toUpperCase();
