@@ -1,0 +1,9 @@
+{
+  "icaoId": "KORD",
+  "rawTAF": "TAF KORD 052330Z 0600/0706 20010KT P6SM SCT035 FM060600 18012G22KT 5SM BR BKN025 TEMPO 0608/0612 3SM BR BKN008",
+  "fcsts": [
+    { "timeFrom": 1783296000, "timeTo": 1783317600, "fcstChange": null, "probability": null, "wdir": 200, "wspd": 10, "wgst": null, "visib": "6+", "clouds": [{ "cover": "SCT", "base": 3500 }] },
+    { "timeFrom": 1783317600, "timeTo": 1783404000, "fcstChange": "FM", "probability": null, "wdir": 180, "wspd": 12, "wgst": 22, "visib": 5, "clouds": [{ "cover": "BKN", "base": 2500 }] },
+    { "timeFrom": 1783324800, "timeTo": 1783339200, "fcstChange": "TEMPO", "probability": null, "wdir": 180, "wspd": 12, "wgst": null, "visib": 3, "clouds": [{ "cover": "BKN", "base": 800 }] }
+  ]
+}

@@ -173,14 +173,17 @@ function parseMetarFields(rawOb) {
   return { ceilingFt, visibilitySm };
 }
 
-function calculateFlightCategory(rawOb) {
-  const { ceilingFt, visibilitySm } = parseMetarFields(rawOb);
+function categoryFromFields(ceilingFt, visibilitySm) {
   if (ceilingFt === null && visibilitySm === null) return 'UNKNOWN';
-
   if ((ceilingFt !== null && ceilingFt < 500) || (visibilitySm !== null && visibilitySm < 1)) return 'LIFR';
   if ((ceilingFt !== null && ceilingFt < 1000) || (visibilitySm !== null && visibilitySm < 3)) return 'IFR';
   if ((ceilingFt !== null && ceilingFt <= 3000) || (visibilitySm !== null && visibilitySm <= 5)) return 'MVFR';
   return 'VFR';
+}
+
+function calculateFlightCategory(rawOb) {
+  const { ceilingFt, visibilitySm } = parseMetarFields(rawOb);
+  return categoryFromFields(ceilingFt, visibilitySm);
 }
 
 function airportForCode(icao) {
@@ -235,6 +238,7 @@ module.exports = {
   cachedFetchJson,
   normalizeAirportCode,
   parseMetarFields,
+  categoryFromFields,
   calculateFlightCategory,
   normalizeTimestamp,
   airportForCode,

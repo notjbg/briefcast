@@ -124,3 +124,86 @@ describe('normalizeMetarTimestamps', () => {
     expect(result.reportTime).toBe('2026-03-29T17:00:00.000Z');
   });
 });
+
+describe('buildFactors', () => {
+  const { buildFactors } = _test;
+  const base = {
+    fromCode: 'KORD',
+    toCode: 'KLAX',
+    departureMetar: { rawOb: 'METAR KORD 060251Z 02009KT 10SM BKN025 21/17 A2999' },
+    destinationMetar: { rawOb: 'METAR KLAX 060253Z 25007KT 10SM SCT250 19/14 A2995' },
+    sigmets: [],
+    airmets: [],
+    tfrFeatures: [],
+    hazardsFetchOk: true,
+    airportFrom: { icao: 'KORD', lat: 41.98, lon: -87.9 },
+    airportTo: { icao: 'KLAX', lat: 33.94, lon: -118.4 }
+  };
+
+  it('extracts ceiling, visibility, wind, and category per endpoint', () => {
+    const f = buildFactors(base);
+    expect(f.departure).toEqual({ name: 'KORD', ceilingFt: 2500, visibilitySm: 10, windKt: 9, gustKt: null, category: 'MVFR' });
+    expect(f.destination.category).toBe('VFR');
+    expect(f.destination.ceilingFt).toBe(null); // SCT is not a ceiling
+    expect(f.dataOk).toEqual({ departureMetar: true, destinationMetar: true });
+  });
+
+  it('flags missing METARs', () => {
+    const f = buildFactors({ ...base, destinationMetar: {} });
+    expect(f.dataOk.destinationMetar).toBe(false);
+  });
+
+  it('classifies convective SIGMETs vs plain SIGMETs vs AIRMETs', () => {
+    const f = buildFactors({
+      ...base,
+      sigmets: [{ airsigmetType: 'SIGMET', hazard: 'CONVECTIVE' }, { airsigmetType: 'SIGMET', hazard: 'TURB' }],
+      airmets: [{ airsigmetType: 'AIRMET', hazard: 'ICE' }]
+    });
+    expect(f.hazards.convectiveSigmetOnRoute).toBe(true);
+    expect(f.hazards.sigmetOnRoute).toBe(true);
+    expect(f.hazards.airmetOnRoute).toBe(true);
+  });
+
+  it('propagates hazard fetch failure', () => {
+    const f = buildFactors({ ...base, hazardsFetchOk: false });
+    expect(f.hazards.hazardDataOk).toBe(false);
+  });
+});
+
+describe('tfrNearEndpoint', () => {
+  const { tfrNearEndpoint } = _test;
+  const airports = [{ lat: 41.98, lon: -87.9 }, { lat: 33.94, lon: -118.4 }];
+  const feature = (coords) => ({ geometry: { type: 'Polygon', coordinates: [coords] } });
+
+  it('true when a TFR vertex is near an endpoint', () => {
+    expect(tfrNearEndpoint([feature([[-87.8, 42.1], [-87.7, 42.0]])], airports)).toBe(true);
+  });
+  it('false for a distant TFR', () => {
+    expect(tfrNearEndpoint([feature([[-80.1, 25.7], [-80.2, 25.8]])], airports)).toBe(false);
+  });
+  it('false for null geometry (unlocatable TFRs never poison the verdict)', () => {
+    expect(tfrNearEndpoint([{ geometry: null }], airports)).toBe(false);
+  });
+  it('false when airports are unknown', () => {
+    expect(tfrNearEndpoint([feature([[-87.8, 42.1]])], [null, null])).toBe(false);
+  });
+});
+
+describe('contradictsVerdict', () => {
+  const { contradictsVerdict } = _test;
+  it('flags go-language against a NO-GO verdict', () => {
+    expect(contradictsVerdict('Conditions look great, you are good to go today.', 'NO-GO')).toBe(true);
+    expect(contradictsVerdict('It is a go for this flight.', 'NO-GO')).toBe(true);
+  });
+  it('flags no-go language against a GO verdict', () => {
+    expect(contradictsVerdict('I would not fly today, this is a no-go.', 'GO')).toBe(true);
+  });
+  it('passes consistent narrative', () => {
+    expect(contradictsVerdict('Ceilings are low; the verdict is NO-GO because of IFR conditions.', 'NO-GO')).toBe(false);
+    expect(contradictsVerdict('Clear skies and light winds support the GO verdict.', 'GO')).toBe(false);
+  });
+  it('passes empty/absent text', () => {
+    expect(contradictsVerdict('', 'GO')).toBe(false);
+    expect(contradictsVerdict(null, 'NO-GO')).toBe(false);
+  });
+});

@@ -230,3 +230,16 @@ describe('cache', () => {
     expect(getCached('test-key-nonexistent-' + Date.now())).toBeNull();
   });
 });
+
+describe('categoryFromFields', () => {
+  const { categoryFromFields } = require('../api/_utils');
+  it('classifies boundaries', () => {
+    expect(categoryFromFields(400, 10)).toBe('LIFR');
+    expect(categoryFromFields(900, 10)).toBe('IFR');
+    expect(categoryFromFields(2500, 10)).toBe('MVFR');
+    expect(categoryFromFields(3000, 10)).toBe('MVFR'); // <= 3000 is MVFR
+    expect(categoryFromFields(3100, 6)).toBe('VFR');
+    expect(categoryFromFields(null, 0.5)).toBe('LIFR');
+    expect(categoryFromFields(null, null)).toBe('UNKNOWN');
+  });
+});

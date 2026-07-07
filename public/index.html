@@ -368,6 +368,48 @@
       color: #fbbf24;
     }
 
+    .verdict-hero { border-width: 2px; }
+    .verdict-hero .verdict-word { font-size: 2.2rem; font-weight: 800; letter-spacing: 0.02em; margin: 4px 0 2px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .verdict-go { border-color: #1a7f37; } .verdict-go .verdict-word { color: #1a7f37; }
+    .verdict-marginal { border-color: #b58105; } .verdict-marginal .verdict-word { color: #b58105; }
+    .verdict-no-go { border-color: #c62828; } .verdict-no-go .verdict-word { color: #c62828; }
+    .verdict-insufficient { border-color: #6b7280; } .verdict-insufficient .verdict-word { color: #6b7280; }
+    [data-theme="dark"] .verdict-go { border-color: #4ade80; }
+    [data-theme="dark"] .verdict-go .verdict-word { color: #4ade80; }
+    [data-theme="dark"] .verdict-marginal { border-color: #fbbf24; }
+    [data-theme="dark"] .verdict-marginal .verdict-word { color: #fbbf24; }
+    [data-theme="dark"] .verdict-no-go { border-color: #f87171; }
+    [data-theme="dark"] .verdict-no-go .verdict-word { color: #f87171; }
+    [data-theme="dark"] .verdict-insufficient { border-color: #9ca3af; }
+    [data-theme="dark"] .verdict-insufficient .verdict-word { color: #9ca3af; }
+    .reason-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+    .reason-chip { font-size: 0.8rem; padding: 3px 10px; border-radius: 999px; border: 1px solid currentColor; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .reason-chip.sev-no-go, .reason-chip.sev-insufficient { color: #c62828; }
+    .reason-chip.sev-marginal { color: #b58105; }
+    .reason-chip.sev-ok { color: #1a7f37; }
+    [data-theme="dark"] .reason-chip.sev-no-go, [data-theme="dark"] .reason-chip.sev-insufficient { color: #f87171; }
+    [data-theme="dark"] .reason-chip.sev-marginal { color: #fbbf24; }
+    [data-theme="dark"] .reason-chip.sev-ok { color: #4ade80; }
+    .timeline-row { display: flex; align-items: center; gap: 2px; margin: 6px 0; }
+    .timeline-label { font-size: 0.75rem; width: 46px; color: var(--muted); flex-shrink: 0; }
+    .timeline-cell { flex: 1; height: 22px; border-radius: 3px; position: relative; min-width: 14px; }
+    .timeline-cell.v-go { background: #1a7f37; }
+    .timeline-cell.v-marginal { background: #b58105; }
+    .timeline-cell.v-no-go { background: #c62828; }
+    [data-theme="dark"] .timeline-cell.v-go { background: #4ade80; }
+    [data-theme="dark"] .timeline-cell.v-marginal { background: #fbbf24; }
+    [data-theme="dark"] .timeline-cell.v-no-go { background: #f87171; }
+    .timeline-cell.v-empty { background: var(--line); opacity: 0.45; }
+    [data-theme="dark"] .timeline-cell.v-empty { background: #374151; opacity: 0.6; }
+    .timeline-hours { display: flex; gap: 2px; margin-left: 48px; }
+    .timeline-hour { flex: 1; font-size: 0.65rem; color: var(--muted); text-align: center; min-width: 14px; }
+    .advisory-line { font-size: 0.78rem; color: var(--muted); margin-top: 8px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .minimums-editor { display: none; gap: 8px; flex-wrap: wrap; margin-top: 10px; align-items: end; }
+    .minimums-editor.open { display: flex; }
+    .minimums-editor label { display: flex; flex-direction: column; font-size: 0.75rem; gap: 2px; }
+    .minimums-editor input { width: 90px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--ink); padding: 8px 10px; }
+    .minimums-tag { font-size: 0.78rem; color: var(--muted); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+
     .quick-look {
       display: flex;
       gap: 18px;
@@ -460,6 +502,7 @@
   </script>
   <script defer src="https://va.vercel-scripts.com/v1/script.js"></script>
   <script defer src="https://vitals.vercel-insights.com/v1/vitals.js"></script>
+  <script src="/verdict.js"></script>
 </head>
 <body>
   <main class="container">
@@ -531,6 +574,7 @@
         <a href="https://github.com/notjbg/briefcast" target="_blank" rel="noopener">GitHub</a>
       </div>
       <p class="meta">Disclaimer: Not for operational flight planning. Always verify with official sources.</p>
+      <p class="meta">Advisory only — not an official weather briefing. Pilots must comply with 14 CFR 91.103.</p>
     </footer>
   </main>
 
@@ -921,6 +965,148 @@
       return `<span class="badge ${css}" aria-label="Flight category ${escapeHtml(c)}">${escapeHtml(c)}</span>`;
     }
 
+    const MINIMUMS_KEY = 'briefcast.personalMinimums';
+    const VERDICT_CLASS = { 'GO': 'verdict-go', 'MARGINAL': 'verdict-marginal', 'NO-GO': 'verdict-no-go', 'INSUFFICIENT DATA': 'verdict-insufficient' };
+
+    function loadPersonalMinimums() {
+      try {
+        const raw = localStorage.getItem(MINIMUMS_KEY);
+        if (!raw) return null;
+        const m = JSON.parse(raw);
+        if ([m.ceilingFt, m.visibilitySm, m.windKt, m.gustKt].every((v) => Number.isFinite(v) && v >= 0)) {
+          return { ...m, label: 'personal' };
+        }
+      } catch {}
+      return null;
+    }
+
+    function savePersonalMinimums(m) {
+      localStorage.setItem(MINIMUMS_KEY, JSON.stringify({ ceilingFt: m.ceilingFt, visibilitySm: m.visibilitySm, windKt: m.windKt, gustKt: m.gustKt }));
+    }
+
+    function clearPersonalMinimums() {
+      localStorage.removeItem(MINIMUMS_KEY);
+    }
+
+    function activeVerdict(data) {
+      const personal = loadPersonalMinimums();
+      if (personal && data.factors && window.BriefcastVerdict) {
+        return { result: window.BriefcastVerdict.computeVerdict(data.factors, personal), minimums: personal };
+      }
+      return { result: { verdict: data.verdict.verdict, reasons: data.verdict.reasons }, minimums: data.verdict.minimums || window.BriefcastVerdict.STANDARD_MINIMUMS };
+    }
+
+    const TL_CLASS = { 'GO': 'v-go', 'MARGINAL': 'v-marginal', 'NO-GO': 'v-no-go' };
+
+    function hourLabel(iso) {
+      return `${String(new Date(iso).getUTCHours()).padStart(2, '0')}:00Z`;
+    }
+
+    function timelineCaption(cells) {
+      if (!cells || !cells.length) return '';
+      const nowV = cells[0].verdict;
+      if (nowV === 'GO') {
+        const worse = cells.find((c) => c.verdict !== 'GO');
+        return worse ? `GO now — deteriorating to ${worse.verdict} around ${hourLabel(worse.hourIso)}` : 'GO throughout the window';
+      }
+      const better = cells.find((c) => c.verdict === 'GO');
+      return better ? `${nowV} now — improving to GO around ${hourLabel(better.hourIso)}` : `${nowV} throughout the window`;
+    }
+
+    function timelineSlots(tl) {
+      // buildTimeline skips uncovered hours, so DEP/DEST arrays can be
+      // different-length subsequences of the hourly slots. Render both rows
+      // on a fixed slot grid (union of hourIso values, sorted ascending) so
+      // columns stay aligned under the shared hour header.
+      const set = new Set();
+      for (const cells of [tl.departure, tl.destination]) {
+        if (cells) for (const c of cells) set.add(c.hourIso);
+      }
+      return [...set].sort((a, b) => new Date(a) - new Date(b));
+    }
+
+    function renderTimelineRow(label, cells, slots) {
+      if (!cells) return '';
+      const byHour = new Map(cells.map((c) => [c.hourIso, c]));
+      const cellsHtml = slots.map((iso) => {
+        const c = byHour.get(iso);
+        return c
+          ? `<div class="timeline-cell ${TL_CLASS[c.verdict] || ''}" title="${escapeHtml(hourLabel(c.hourIso))} — ${escapeHtml(c.category)} / ${escapeHtml(c.verdict)}"></div>`
+          : `<div class="timeline-cell v-empty" title="${escapeHtml(hourLabel(iso))} — no forecast coverage"></div>`;
+      }).join('');
+      return `<div class="timeline-row"><span class="timeline-label">${escapeHtml(label)}</span>${cellsHtml}</div>`;
+    }
+
+    function renderTimeline(data) {
+      const tl = data.timeline;
+      if (!tl || (!tl.departure && !tl.destination)) return '';
+      const slots = timelineSlots(tl);
+      const hours = slots.map((iso) => `<span class="timeline-hour">${escapeHtml(hourLabel(iso).slice(0, 2))}</span>`).join('');
+      const caption = timelineCaption(tl.departure || tl.destination);
+      return `
+        <section class="card">
+          <p class="section-kicker">Departure Window · next 12 hours (weather only — hazards not hourly-forecast)</p>
+          <p class="sans">${escapeHtml(caption)}</p>
+          ${renderTimelineRow('DEP', tl.departure, slots)}
+          ${renderTimelineRow('DEST', tl.destination, slots)}
+          <div class="timeline-hours">${hours}</div>
+        </section>`;
+    }
+
+    function renderVerdictHero(data) {
+      if (!data.verdict) return '';
+      const { result, minimums } = activeVerdict(data);
+      const cls = VERDICT_CLASS[result.verdict] || 'verdict-insufficient';
+      const chips = result.reasons.map((r) =>
+        `<span class="reason-chip sev-${escapeHtml(r.severity)}">${escapeHtml(r.text)}</span>`
+      ).join('');
+      const minsLabel = minimums.label === 'personal'
+        ? `Using your personal minimums — ceiling ${minimums.ceilingFt.toLocaleString()} ft, vis ${minimums.visibilitySm} sm, wind ${minimums.windKt} kt, gusts ${minimums.gustKt} kt`
+        : `Using standard conservative VFR minimums — ceiling ${minimums.ceilingFt.toLocaleString()} ft, vis ${minimums.visibilitySm} sm, wind ${minimums.windKt} kt, gusts ${minimums.gustKt} kt`;
+      const explanation = data.verdict.explanation
+        ? `<p class="sans">${escapeHtml(data.verdict.explanation)} <span class="meta">(AI-generated explanation of the deterministic verdict)</span></p>`
+        : '';
+      const m = minimums;
+      return `
+        <section class="card verdict-hero ${cls}">
+          <p class="section-kicker">Go / No-Go</p>
+          <p class="verdict-word">${escapeHtml(result.verdict)}</p>
+          <div class="reason-chips">${chips}</div>
+          ${explanation}
+          <p class="minimums-tag">${minsLabel} · <a href="#" id="editMinimumsLink">Edit minimums</a></p>
+          <form class="minimums-editor sans" id="minimumsEditor">
+            <label>Ceiling (ft)<input type="number" id="minCeiling" min="0" step="100" value="${m.ceilingFt}"></label>
+            <label>Visibility (sm)<input type="number" id="minVis" min="0" step="1" value="${m.visibilitySm}"></label>
+            <label>Wind (kt)<input type="number" id="minWind" min="0" step="1" value="${m.windKt}"></label>
+            <label>Gusts (kt)<input type="number" id="minGust" min="0" step="1" value="${m.gustKt}"></label>
+            <button class="btn btn-primary" type="submit">Save</button>
+            <button class="btn" type="button" id="resetMinimums">Reset to standard</button>
+          </form>
+          <p class="advisory-line">Advisory only — not an official weather briefing. Pilots must comply with 14 CFR 91.103. For an official briefing use <a href="https://www.1800wxbrief.com" rel="noopener" target="_blank">1800wxbrief.com</a>.</p>
+        </section>`;
+    }
+
+    function wireVerdictHero(data) {
+      const link = document.getElementById('editMinimumsLink');
+      const editor = document.getElementById('minimumsEditor');
+      if (!link || !editor) return;
+      link.addEventListener('click', (e) => { e.preventDefault(); editor.classList.toggle('open'); });
+      editor.addEventListener('submit', (e) => {
+        e.preventDefault();
+        savePersonalMinimums({
+          ceilingFt: Number(document.getElementById('minCeiling').value),
+          visibilitySm: Number(document.getElementById('minVis').value),
+          windKt: Number(document.getElementById('minWind').value),
+          gustKt: Number(document.getElementById('minGust').value)
+        });
+        rerenderResults(data); // re-render with personal minimums, no refetch
+      });
+      document.getElementById('resetMinimums').addEventListener('click', () => {
+        clearPersonalMinimums();
+        rerenderResults(data);
+      });
+    }
+
     function formatRelativeTime(isoString) {
       if (!isoString) return null;
       try {
@@ -1139,6 +1325,15 @@
       `;
     }
 
+    let lastBriefingData = null;
+    let lastRoute = { from: null, to: null };
+
+    function rerenderResults(data) {
+      if (!data) return;
+      lastBriefingData = data;
+      renderBriefing(data, lastRoute.from, lastRoute.to);
+    }
+
     function renderBriefing(data, fromCode, toCode) {
       const fromAirport = state.airportIndex.get(fromCode) || { icao: fromCode, name: fromCode };
       const toAirport = state.airportIndex.get(toCode) || { icao: toCode, name: toCode };
@@ -1177,6 +1372,8 @@
 
       els.results.innerHTML = `
         ${staleHtml}
+        ${renderVerdictHero(data)}
+        ${renderTimeline(data)}
         <section class="card">
           <p class="section-kicker">Quick Look</p>
           <h2>${escapeHtml(fromCode)} / ${escapeHtml(toCode)}</h2>
@@ -1224,6 +1421,7 @@
           <p class="sans"><strong>Departure ${escapeHtml(fromCode)}:</strong> ${categoryBadge(depCategory)} &nbsp; <strong>Destination ${escapeHtml(toCode)}:</strong> ${categoryBadge(destCategory)}</p>
         </section>
       `;
+      wireVerdictHero(data);
     }
 
     async function fetchBriefing(from, to, departTime) {
@@ -1297,7 +1495,8 @@
       try {
         const data = await fetchBriefing(fromCode, toCode, departTime);
         clearLoadingInterval();
-        renderBriefing(data, fromCode, toCode);
+        lastRoute = { from: fromCode, to: toCode };
+        rerenderResults(data);
         setStatus(`Briefing ready for ${fromCode} to ${toCode}.`);
         // Auto-scroll to results (6.5f)
         els.results.scrollIntoView({ behavior: 'smooth', block: 'start' });
