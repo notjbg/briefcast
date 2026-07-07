@@ -175,10 +175,11 @@ function contradictsVerdict(text, verdict) {
 let _apiKeyWarned = false;
 
 async function maybeTranslateWithGateway(payload, verdictResult) {
-  const apiKey = process.env.AI_GATEWAY_API_KEY;
+  // OIDC token is auto-injected and auto-refreshed on Vercel deployments; explicit key wins if set.
+  const apiKey = process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN;
   if (!apiKey) {
     if (!_apiKeyWarned) {
-      console.warn('briefcast.config.missing_key', 'AI_GATEWAY_API_KEY not set — AI narratives disabled. Deterministic verdict still active.');
+      console.warn('briefcast.config.missing_key', 'No AI_GATEWAY_API_KEY or VERCEL_OIDC_TOKEN — AI narratives disabled. Deterministic verdict still active.');
       _apiKeyWarned = true;
     }
     return null;
