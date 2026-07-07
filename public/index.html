@@ -8,11 +8,14 @@
   <meta property="og:title" content="BriefCast — Pre-Flight Weather Briefings in Plain English" />
   <meta property="og:description" content="Plain-English weather briefings for pilots with METARs, TAFs, AFDs, PIREPs, and hazards in one place." />
   <meta property="og:type" content="website" />
-  <meta property="og:image" content="/og-image.png" />
+  <!-- Default share card: the generic branded flight strip. Social scrapers read
+       this server-rendered default; when a permalink loads, the client swaps in a
+       route-specific card (see updateOgImage). -->
+  <meta property="og:image" content="/api/og" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="BriefCast — Pre-Flight Weather Briefings in Plain English" />
   <meta name="twitter:description" content="Pre-flight weather briefings translated from aviation jargon to readable prose." />
-  <meta name="twitter:image" content="/og-image.png" />
+  <meta name="twitter:image" content="/api/og" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet" />
@@ -1582,6 +1585,17 @@
       }, 2000);
     }
 
+    // Point the og:image/twitter:image meta at the route-specific share card.
+    // Best-effort only: social scrapers read the server-rendered default (/api/og)
+    // before this runs, so this mainly helps clients that re-read the DOM.
+    function updateOgImage(fromCode, toCode) {
+      const url = `/api/og?from=${encodeURIComponent(fromCode)}&to=${encodeURIComponent(toCode)}`;
+      for (const selector of ['meta[property="og:image"]', 'meta[name="twitter:image"]']) {
+        const meta = document.head.querySelector(selector);
+        if (meta) meta.setAttribute("content", url);
+      }
+    }
+
     function updatePermalink(fromCode, toCode) {
       if (!PERMALINK_CODE_RE.test(fromCode) || !PERMALINK_CODE_RE.test(toCode)) return;
       try {
@@ -1589,6 +1603,7 @@
       } catch {
         // history API unavailable (e.g., sandboxed iframe) — permalink is a nicety, not a failure
       }
+      updateOgImage(fromCode, toCode);
     }
 
     function applyPermalinkParams() {
