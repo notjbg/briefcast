@@ -443,28 +443,49 @@
       color: #fbbf24;
     }
 
-    .verdict-hero { border-width: 2px; }
-    .verdict-hero .verdict-word { font-size: 2.2rem; font-weight: 800; letter-spacing: 0.02em; margin: 4px 0 2px; font-family: var(--font-body); }
-    .verdict-go { border-color: #1a7f37; } .verdict-go .verdict-word { color: #1a7f37; }
-    .verdict-marginal { border-color: #b58105; } .verdict-marginal .verdict-word { color: #b58105; }
-    .verdict-no-go { border-color: #c62828; } .verdict-no-go .verdict-word { color: #c62828; }
-    .verdict-insufficient { border-color: #6b7280; } .verdict-insufficient .verdict-word { color: #6b7280; }
-    [data-theme="dark"] .verdict-go { border-color: #4ade80; }
-    [data-theme="dark"] .verdict-go .verdict-word { color: #4ade80; }
-    [data-theme="dark"] .verdict-marginal { border-color: #fbbf24; }
-    [data-theme="dark"] .verdict-marginal .verdict-word { color: #fbbf24; }
-    [data-theme="dark"] .verdict-no-go { border-color: #f87171; }
-    [data-theme="dark"] .verdict-no-go .verdict-word { color: #f87171; }
-    [data-theme="dark"] .verdict-insufficient { border-color: #9ca3af; }
-    [data-theme="dark"] .verdict-insufficient .verdict-word { color: #9ca3af; }
-    .reason-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
-    .reason-chip { font-size: 0.8rem; padding: 3px 10px; border-radius: 999px; border: 1px solid currentColor; font-family: var(--font-body); }
-    .reason-chip.sev-no-go, .reason-chip.sev-insufficient { color: #c62828; }
-    .reason-chip.sev-marginal { color: #b58105; }
-    .reason-chip.sev-ok { color: #1a7f37; }
-    [data-theme="dark"] .reason-chip.sev-no-go, [data-theme="dark"] .reason-chip.sev-insufficient { color: #f87171; }
-    [data-theme="dark"] .reason-chip.sev-marginal { color: #fbbf24; }
-    [data-theme="dark"] .reason-chip.sev-ok { color: #4ade80; }
+    /* Verdict strip: 4px left rail colored by verdict via --strip-rail (inherited by .card).
+       The stamp takes its color from --stamp-color. Both theme's stamp tokens are pre-brightened. */
+    .verdict-go        { --strip-rail: var(--stamp-go);           --stamp-color: var(--stamp-go); }
+    .verdict-marginal  { --strip-rail: var(--stamp-caution);      --stamp-color: var(--stamp-caution); }
+    .verdict-no-go     { --strip-rail: var(--stamp-nogo);         --stamp-color: var(--stamp-nogo); }
+    .verdict-insufficient { --strip-rail: var(--stamp-insufficient); --stamp-color: var(--stamp-insufficient); }
+
+    .verdict-full { color: var(--ink-soft); }
+
+    /* The stamp — the signature element. Reads as pressed, not badged. */
+    .stamp-wrap { margin: 10px 0 6px; }
+    .stamp {
+      display: inline-block; padding: 8px 24px; position: relative;
+      font-family: var(--font-display);
+      font-weight: 700; font-size: 2.4rem; line-height: 1;
+      letter-spacing: 0.09em; text-transform: uppercase;
+      color: var(--stamp-color, var(--ink));
+      border: 3px solid currentColor; border-radius: 9px;
+      transform: rotate(-2.5deg); transform-origin: center;
+      -webkit-mask-image: radial-gradient(ellipse at 42% 58%, #000 62%, rgba(0,0,0,0.82) 78%, rgba(0,0,0,0.66) 100%);
+              mask-image: radial-gradient(ellipse at 42% 58%, #000 62%, rgba(0,0,0,0.82) 78%, rgba(0,0,0,0.66) 100%);
+    }
+    .stamp::after { /* inner ring */
+      content: ''; position: absolute; inset: 4px;
+      border: 1px solid currentColor; border-radius: 5px;
+    }
+    @keyframes stamp-press {
+      0%   { opacity: 0; transform: scale(1.18) rotate(-1deg); }
+      100% { opacity: 1; transform: scale(1) rotate(-2.5deg); }
+    }
+    .stamp-press { animation: stamp-press 280ms cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+    @media (prefers-reduced-motion: reduce) { .stamp-press { animation: none; } }
+
+    /* Reason annotations — mono ink lines, not pills. */
+    .reason-chips { margin: 10px 0 4px; }
+    .reason-chip {
+      display: block;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      color: var(--ink-soft);
+      line-height: 1.5;
+    }
+    .reason-chip::before { content: "\25B8\00a0"; }
     .timeline-row { display: flex; align-items: center; gap: 2px; margin: 6px 0; }
     .timeline-label { font-size: 0.75rem; width: 46px; color: var(--ink-soft); flex-shrink: 0; }
     .timeline-cell { flex: 1; height: 22px; border-radius: 3px; position: relative; min-width: 14px; }
@@ -482,7 +503,14 @@
     .minimums-editor { display: none; gap: 8px; flex-wrap: wrap; margin-top: 10px; align-items: end; }
     .minimums-editor.open { display: flex; }
     .minimums-editor label { display: flex; flex-direction: column; font-size: 0.75rem; gap: 2px; }
-    .minimums-editor input { width: 90px; border: 1px solid var(--rule); border-radius: 10px; background: var(--strip); color: var(--ink); padding: 8px 10px; }
+    .minimums-editor label { color: var(--ink-soft); font-family: var(--font-display); letter-spacing: 0.04em; text-transform: uppercase; }
+    .minimums-editor input {
+      width: 90px; background: transparent; color: var(--ink);
+      font-family: var(--font-mono); font-size: 0.9rem;
+      border: 0; border-bottom: 1px solid var(--rule); border-radius: 0;
+      padding: 6px 2px;
+    }
+    .minimums-editor input:focus { outline: none; border-bottom-color: var(--bay-blue); }
     .minimums-tag { font-size: 0.78rem; color: var(--ink-soft); font-family: var(--font-body); }
 
     .quick-look {
@@ -1048,6 +1076,9 @@
 
     const MINIMUMS_KEY = 'briefcast.personalMinimums';
     const VERDICT_CLASS = { 'GO': 'verdict-go', 'MARGINAL': 'verdict-marginal', 'NO-GO': 'verdict-no-go', 'INSUFFICIENT DATA': 'verdict-insufficient' };
+    // Stamp face abbreviates only the long phrase; full phrase rides the strip label.
+    const STAMP_TEXT = { 'GO': 'GO', 'MARGINAL': 'MARGINAL', 'NO-GO': 'NO-GO', 'INSUFFICIENT DATA': 'INSUFF DATA' };
+    const VERDICT_FULL = { 'GO': 'Go', 'MARGINAL': 'Marginal', 'NO-GO': 'No-go', 'INSUFFICIENT DATA': 'Insufficient data' };
 
     function loadPersonalMinimums() {
       try {
@@ -1138,6 +1169,8 @@
       if (!data.verdict) return '';
       const { result, minimums } = activeVerdict(data);
       const cls = VERDICT_CLASS[result.verdict] || 'verdict-insufficient';
+      const stampText = STAMP_TEXT[result.verdict] || 'INSUFF DATA';
+      const fullPhrase = VERDICT_FULL[result.verdict] || 'Insufficient data';
       const chips = result.reasons.map((r) =>
         `<span class="reason-chip sev-${escapeHtml(r.severity)}">${escapeHtml(r.text)}</span>`
       ).join('');
@@ -1150,8 +1183,9 @@
       const m = minimums;
       return `
         <section class="card verdict-hero ${cls}">
-          <p class="section-kicker">Go / No-Go</p>
-          <p class="verdict-word">${escapeHtml(result.verdict)}</p>
+          <p class="section-kicker">Clearance</p>
+          <div class="stamp-wrap"><span class="stamp stamp-press" role="img" aria-label="${escapeHtml(fullPhrase)}">${escapeHtml(stampText)}</span></div>
+          <p class="strip-label verdict-full">${escapeHtml(fullPhrase)}</p>
           <div class="reason-chips">${chips}</div>
           ${explanation}
           <p class="minimums-tag">${minsLabel} · <a href="#" id="editMinimumsLink">Edit minimums</a></p>
@@ -1168,6 +1202,16 @@
     }
 
     function wireVerdictHero(data) {
+      // Re-trigger the stamp press on every fresh render: drop the class, force a
+      // reflow on the next frame, then re-add so re-generates re-press.
+      const stamp = document.querySelector('.verdict-hero .stamp');
+      if (stamp) {
+        stamp.classList.remove('stamp-press');
+        requestAnimationFrame(() => {
+          void stamp.offsetWidth; // reflow so the animation restarts
+          stamp.classList.add('stamp-press');
+        });
+      }
       const link = document.getElementById('editMinimumsLink');
       const editor = document.getElementById('minimumsEditor');
       if (!link || !editor) return;
