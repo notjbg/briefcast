@@ -171,7 +171,12 @@ function contradictsVerdict(text, verdict) {
 
 let _apiKeyWarned = false;
 
+// Project archived Jul 2026 — AI narratives disabled to stop gateway spend on an
+// unmaintained deployment. Deterministic briefing data still served.
+const ARCHIVED = true;
+
 async function maybeTranslateWithGateway(payload, verdictResult, oidcToken) {
+  if (ARCHIVED) return null;
   // Auth resolution: explicit key > OIDC env (build/local) > OIDC request header (Vercel runtime).
   // Vercel delivers the runtime OIDC token via the x-vercel-oidc-token request header, not env.
   const apiKey = process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN || oidcToken || null;

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>BriefCast — Pre-Flight Weather Briefings in Plain English</title>
+  <title>BriefCast (archived) — Pre-Flight Weather Briefings in Plain English</title>
   <meta name="description" content="Get pre-flight weather briefings translated from aviation jargon to plain English. METARs, TAFs, AFDs, PIREPs, and hazards decoded for pilots." />
   <meta property="og:title" content="BriefCast — Pre-Flight Weather Briefings in Plain English" />
   <meta property="og:description" content="Plain-English weather briefings for pilots with METARs, TAFs, AFDs, PIREPs, and hazards in one place." />
@@ -646,6 +646,17 @@
       .card, .strip { animation: none; }
       .loading-pulse { animation: none; opacity: 0.6; width: 100%; }
     }
+
+    .archive-banner {
+      background: #B3261E;
+      color: #FAFAF7;
+      padding: 12px 16px;
+      font-family: var(--font-body);
+      font-size: 0.92rem;
+      line-height: 1.45;
+      text-align: center;
+    }
+    .archive-banner a { color: inherit; text-decoration: underline; }
   </style>
   <script type="application/ld+json">
   {
@@ -691,6 +702,9 @@
   <script src="/verdict.js"></script>
 </head>
 <body>
+  <div class="archive-banner" role="alert">
+    <strong>Archived project</strong> — BriefCast is no longer maintained. Known data bugs make hazard detection and the Go/No-Go verdict unreliable. <strong>Do not use for flight planning.</strong> For official briefings use <a href="https://www.1800wxbrief.com">1800wxbrief.com</a> or <a href="https://aviationweather.gov">aviationweather.gov</a>.
+  </div>
   <main class="container">
     <header>
       <div class="brand-row">

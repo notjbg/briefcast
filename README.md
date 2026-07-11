@@ -1,5 +1,7 @@
 # BriefCast
 
+> **⚠️ Archived (July 2026).** This project is no longer maintained. Known data bugs make the hazard detection and Go/No-Go verdict unreliable — notably, the aviationweather.gov airsigmet endpoint ignores its `bbox` parameter, so `convectiveSigmetOnRoute` (api/briefing.js) tests against the *national* SIGMET list and stamps NO-GO on nearly every route in convective season; the PIREP fetch's lon-first bbox returns an empty body, so PIREPs have always been silently absent; TFRs are sourced from NWS alerts rather than the FAA. Do not use for flight planning. AI narratives are disabled. The live deployment carries a matching warning banner.
+
 BriefCast is a single-page pre-flight weather briefing app that translates aviation weather jargon into plain English for pilots.
 
 ## Design: the Flight Strip
